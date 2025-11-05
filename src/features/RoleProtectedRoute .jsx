@@ -20,7 +20,7 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useUserStore } from "@/stores/useUserStore";
 
-const RoleProtectedRoute = ({ allowedRoles }) => {
+const RoleProtectedRoute = ({ allowedRoles,children }) => {
   const { profile } = useUserStore();
 
   // حالت بارگذاری: هنوز مشخص نیست کاربر کیه
@@ -33,7 +33,7 @@ const RoleProtectedRoute = ({ allowedRoles }) => {
     return <Navigate to="/unauthorized" />;
   }
 
-  return <Outlet />;
+  return children;
 };
 
 export default RoleProtectedRoute;

@@ -237,7 +237,7 @@ import { useUserStore } from "@/stores/useUserStore";
 import { useNavigate } from "react-router-dom";
 import supabase from "@/api/supabase";
 
-function ProfileHeader() {
+function ProfileHeader({children}) {
   const [isShowMenu, setIsShowMenu] = useState(false);
   const profile = useUserStore((state) => state.profile);
   const clearProfile = useUserStore((state) => state.clearProfile);
@@ -345,7 +345,7 @@ function ProfileHeader() {
 
         {/* --- Menu Links --- */}
         <div className="my-8 space-y-6 py-5 px-[15px]">
-          <MenuLink href="/" className="flex items-center gap-x-5">
+          {/* <MenuLink href="/" className="flex items-center gap-x-5">
             <svg className="size-6 text-white">...</svg>
             نوبت‌های من
           </MenuLink>
@@ -368,7 +368,9 @@ function ProfileHeader() {
           <MenuLink href="/faq" className="flex items-center gap-x-5">
             <svg className="size-6 text-white">...</svg>
             سوالات رایج کاربران
-          </MenuLink>
+          </MenuLink> */}
+
+          {children}
         </div>
       </div>
     </>

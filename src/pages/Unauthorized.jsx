@@ -26,14 +26,13 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white text-sky-700 px-4">
-      <h1 className="text-[100px] font-extrabold tracking-wide text-sky-600 drop-shadow-sm">
+      <h1 className="text-[100px] font-extrabold tracking-wide text-sky-600 drop-shadow-sm mb-5 pb-8">
         404
       </h1>
 
       <p className="text-xl font-semibold mt-2 mb-4 text-sky-700">
         صفحه‌ای که دنبالش هستید پیدا نشد
       </p>
-
       <p className="text-center max-w-md text-sky-600 mb-8">
         ممکنه آدرس رو اشتباه وارد کرده باشید یا صفحه حذف شده باشه.
       </p>

@@ -155,7 +155,8 @@ import { IoMdBook } from "react-icons/io";
 import { FcAdvertising } from "react-icons/fc";
 import { useUserStore } from "@/stores/useUserStore";
 import { getDashboardPath } from "@/utils/routeHelpers"; // مسیر را اصلاح کن متناسب با ساختار پروژه
-
+import { FiUser } from "react-icons/fi";
+import { MdLogin } from "react-icons/md";
 
 function MenuMobile() {
   const [isShowModal, setIsShowModal] = useState(false);
@@ -201,11 +202,23 @@ const label = isDentist && isActived ? "تبلیغات" : "ثبت دندان پ�
                   onClick={handleClick}
               >
                  {/* onClick={handleClick} */}
+                 <FaRegUser />
                 حساب کاربری
               </Button>
             ):(
               <Button href={dashboardLink} className="flex flex-col items-center gap-y-1">
-                {profile?.userStatus=="actived" ? "پنل کاربری" : "ورود/ثبت نام"}
+                {profile?.userStatus=="actived" ? (
+                  <>
+                    <FiUser className="size-6"/>
+                    پنل کاربری
+                  </>
+                ) : (
+                  <>
+                    <MdLogin className="size-6"/>
+                    ورود | ثبت نام
+                  </>
+                )}
+
               </Button>
             )}
           </li>

@@ -27,7 +27,7 @@ import AdminPanel from "./pages/adminpanel/AdminPanel"
 import HomeAdminPanel from "./pages/adminpanel/Home"
 import Articles from "./pages/adminpanel/Articles"
 import Comments from "./pages/adminpanel/Comments"
-import Groupy from "./pages/adminpanel/groupy"
+import Groupy from "./pages/adminpanel/Groupy"
 import Users from "./pages/adminpanel/user-management/Users"
 import Menous from "./pages/adminpanel/Menous"
 import NotFound from "./pages/Unauthorized"
@@ -148,9 +148,12 @@ let routes = [
     // 🦷 Dentist Panel (محافظت‌شده)
     {
       path: "/dentist-panel/*",
-      element: <RoleProtectedRoute allowedRoles={["dentist"]} />,
+      element: 
+      <RoleProtectedRoute allowedRoles={["dentist"]}>
+          <DentistPanel />
+      </RoleProtectedRoute>,
       children: [
-        { path: "", element: <DentistPanel /> },
+        { path: "", element: <DentistHome /> },
         { path: "details", element: <DentistDetails /> },
       ],
     },
@@ -158,7 +161,10 @@ let routes = [
     // 👤 User Panel (محافظت‌شده)
     {
       path: "/user-panel/*",
-      element: <RoleProtectedRoute allowedRoles={["patient"]} />,
+      element: 
+        <RoleProtectedRoute allowedRoles={["patient"]}>
+            <UserPanel />
+        </RoleProtectedRoute>,
       children: [
         { path: "details", element: <UserDetails /> },
         { path: "appointments", element: <Appointments /> },
