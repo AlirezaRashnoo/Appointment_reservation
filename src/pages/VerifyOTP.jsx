@@ -450,7 +450,6 @@ const schema = z.object({
   otpCode: z.string().min(6, "کد تایید باید ۶ رقمی باشد").max(6, "کد تایید باید ۶ رقمی باشد"),
 });
 
-const navigate = useNavigate();
 
 // ارسال OTP به سرور
 const verifyOTP = async (data) => {
@@ -459,18 +458,18 @@ const verifyOTP = async (data) => {
       phoneNumber: localStorage.getItem("phone"),  // شماره تلفن از LocalStorage
       otp: data.otpCode,
     };
-
+    
     console.log("Sending otp payload:", JSON.stringify(payload, null, 2));
-
+    
     const response = await axios.post("https://dentist-reyn.onrender.com/api/v1/auth/verify-otp", payload, {
       headers: {
         "Content-Type": "application/json",
       },
     });
-
+    
     // چاپ پاسخ کامل از سرور برای بررسی نتیجه
     console.log("Full Response from Server:", response);
-
+    
     // در اینجا فقط پاسخ دریافتی را برمی‌گردانیم
     return response.data;
   } catch (error) {
@@ -480,6 +479,7 @@ const verifyOTP = async (data) => {
 };
 
 export default function VerifyOTP() {
+  const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
   });
