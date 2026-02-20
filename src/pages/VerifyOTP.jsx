@@ -442,11 +442,15 @@ import Button from "../component/Button";
 import Header from "../component/Header";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+
 
 // Zod validation schema
 const schema = z.object({
   otpCode: z.string().min(6, "کد تایید باید ۶ رقمی باشد").max(6, "کد تایید باید ۶ رقمی باشد"),
 });
+
+const navigate = useNavigate();
 
 // ارسال OTP به سرور
 const verifyOTP = async (data) => {
