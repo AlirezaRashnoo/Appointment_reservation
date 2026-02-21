@@ -245,194 +245,60 @@
 
 
 import React from 'react';
-import { Routes ,Route, useRoutes } from "react-router-dom";
-import routes from './routes';
-import { ToastContainer,Bounce} from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'
+import { useRoutes } from "react-router-dom";
+import { ToastContainer, Bounce } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Header from './component/Header';
 // import Modal from './component/Modal';
-import AuthInit from './features/AuthInit';
+import routes from './routes';
+
 import { useUserStore } from './stores/useUserStore';
-import { useEffect } from 'react';
-import { useQuery, QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
+import { ClipLoader } from 'react-spinners';
 
-// ایجاد QueryClient با تنظیمات ساده
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 0,
-      refetchOnWindowFocus: false,
+// API Service برای گرفتن پروفایل (بدون نیاز به ارسال توکن دستی)
+const fetchProfile = async () => {
+  const response = await fetch('https://dentist-reyn.onrender.com/api/v1/users/me', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
     },
-  },
-});
+    credentials: 'include', // برای ارسال کوکی‌ها با درخواست (اگر کوکی‌ها تنظیم شده باشد)
+  });
 
-// ساخت یه نمونه axios با timeout بیشتر
-const api = axios.create({
-  baseURL: 'https://dentist-reyn.onrender.com/api/v1',
-  withCredentials: true,
-  timeout: 30000, // 30 ثانیه timeout
-});
-
-// اینترسپتور برای لاگ
-api.interceptors.request.use(request => {
-  console.log('🚀 Request:', request.method, request.url);
-  return request;
-});
-
-api.interceptors.response.use(
-  response => {
-    console.log('✅ Response:', response.status);
-    return response;
-  },
-  error => {
-    if (error.code === 'ECONNABORTED') {
-      console.log('⏰ Timeout error - server not responding');
-    } else {
-      console.log('❌ Error:', error.message);
-    }
-    return Promise.reject(error);
+  if (!response.ok) {
+    throw new Error('Error fetching profile');
   }
-);
-
-console.log('✅ API Created');
-
-// هوک ساده برای گرفتن کاربر
-const useFetchUser = () => {
-  return useQuery({
-    queryKey: ['user'],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/users/me');
-        return response.data;
-      } catch (error) {
-        // اگه timeout یا 401 باشه، null برگردون (یعنی لاگین نیست)
-        if (error.code === 'ECONNABORTED' || error.response?.status === 401) {
-          return null;
-        }
-        throw error;
-      }
-    },
-  });
+  return response.json();
 };
 
-// هوک ساده برای گرفتن پروفایل
-const useFetchProfile = (userId) => {
-  return useQuery({
-    queryKey: ['profile', userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      try {
-        const response = await api.get(`/users/${userId}`);
-        return response.data;
-      } catch (error) {
-        console.log('Profile fetch error:', error.message);
-        return null;
-      }
-    },
-    enabled: !!userId,
-  });
-};
-
-// کامپوننت وضعیت ساده
-function StatusBar() {
-  const profile = useUserStore((state) => state.profile);
-  
-  return (
-    <div style={{
-      position: 'fixed',
-      bottom: '10px',
-      right: '10px',
-      background: '#f0f0f0',
-      padding: '5px 10px',
-      borderRadius: '5px',
-      fontSize: '11px',
-      zIndex: 9999
-    }}>
-      {profile ? `👤 ${profile.name}` : '👤 مهمان'}
-    </div>
-  );
-}
-
-// محتوای اصلی
-function AppContent() {
-  console.log('🔄 App render');
-  
+function App() {
   const router = useRoutes(routes);
   const setProfile = useUserStore((state) => state.setProfile);
-  
-  // گرفتن کاربر
-  const { data: user, isLoading: userLoading, error: userError } = useFetchUser();
-  
-  // گرفتن پروفایل
-  const { data: profile, isLoading: profileLoading } = useFetchProfile(user?.id);
 
-  // ذخیره پروفایل
-  useEffect(() => {
-    if (profile) {
-      setProfile(profile);
-    }
-  }, [profile, setProfile]);
+  // استفاده از React Query برای گرفتن پروفایل کاربر
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['profile'],  // استفاده از queryKey
+    queryFn: fetchProfile,  // استفاده از queryFn برای ارسال درخواست
+    onSuccess: (profile) => {
+      if (profile) {
+        setProfile(profile);  // ذخیره پروفایل در وضعیت global
+      }
+    },
+  });
 
-  // لودینگ
-  if (userLoading) {
+  if (isLoading) {
     return (
       <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div>در حال بارگذاری...</div>
+        <ClipLoader size={60} color="#36d7b7" />
       </div>
     );
   }
 
-  // خطای timeout - پیشنهاد رفرش
-  if (userError?.code === 'ECONNABORTED') {
-    return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ fontSize: '24px', marginBottom: '20px' }}>⏰</div>
-        <div style={{ marginBottom: '20px', color: '#666', textAlign: 'center' }}>
-          سرور پاسخ نمیدهد<br />
-          ممکن است سرور در حال راه‌اندازی باشد
-        </div>
-        <button 
-          onClick={() => window.location.reload()}
-          style={{ padding: '10px 30px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-        >
-          تلاش مجدد
-        </button>
-      </div>
-    );
+  if (error) {
+    return <div>Error loading profile: {error.message}</div>;
   }
 
-  // خطای دیگه
-  if (userError) {
-    return (
-      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'red' }}>
-        خطا: {userError.message}
-      </div>
-    );
-  }
-
-  // اگه کاربر لاگین نیست
-  if (user === null) {
-    return (
-      <>
-        {router}
-        <ToastContainer />
-        <StatusBar />
-      </>
-    );
-  }
-
-  // لودینگ پروفایل
-  if (profileLoading) {
-    return (
-      <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div>در حال بارگذاری پروفایل...</div>
-      </div>
-    );
-  }
-
-  // همه چیز اوکی
   return (
     <>
       {router}
@@ -449,17 +315,7 @@ function AppContent() {
         theme="light"
         transition={Bounce}
       />
-      <StatusBar />
     </>
-  );
-}
-
-// کامپوننت اصلی
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AppContent />
-    </QueryClientProvider>
   );
 }
 
