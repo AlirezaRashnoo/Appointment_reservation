@@ -1,3 +1,352 @@
+// import React from "react";
+// import { useForm } from "react-hook-form";
+// import { z } from "zod";
+// import { zodResolver } from "@hookform/resolvers/zod";
+// import { useMutation } from "@tanstack/react-query";
+// import axios from "axios";
+// import Swal from "sweetalert2";
+// import Button from "@/component/Button";
+// import { useNavigate } from "react-router-dom";
+
+// /* =====================
+//    Validation Schema
+// ===================== */
+// const schema = z.object({
+//   phoneNumber: z
+//     .string()
+//     .length(11, "شماره موبایل باید ۱۱ رقم باشد")
+//     .regex(/^09\d{9}$/, "شماره موبایل نامعتبر است"),
+//   password: z.string().min(6, "رمز عبور حداقل ۶ کاراکتر باشد"),
+// });
+
+// /* =====================
+//    API Call
+// ===================== */
+// const loginUser = async (data) => {
+//   const payload = {
+//     loginMethod: "local",
+//     credentials: {
+//       phoneNumber: data.phoneNumber,
+//       password: data.password,
+//     },
+//   };
+
+//   console.log("Login payload:", payload);
+
+//   const response = await axios.post(
+//     "https://dentist-reyn.onrender.com/api/v1/auth/login",
+//     payload,
+//     { headers: { "Content-Type": "application/json" } }
+//   );
+
+//   return response.data;
+// };
+
+// /* =====================
+//    Component
+// ===================== */
+// export default function Login() {
+//   const navigate = useNavigate();
+
+//   const {
+//     register,
+//     handleSubmit,
+//     formState: { errors },
+//   } = useForm({
+//     resolver: zodResolver(schema),
+//   });
+
+//   const mutation = useMutation({
+//     mutationFn: loginUser,
+//     onSuccess: (data) => {
+//       console.log("Login response:", data);
+
+//       Swal.fire("موفق", "ورود با موفقیت انجام شد", "success");
+
+//       // فعلاً هیچ کاری با توکن نداریم
+//       // بعداً اینجا می‌تونی store یا cookie رو اضافه کنی
+
+//       navigate("/");
+//     },
+//     onError: (error) => {
+//       Swal.fire(
+//         "خطا",
+//         error.response?.data?.message || "اطلاعات ورود نادرست است",
+//         "error"
+//       );
+//     },
+//   });
+
+//   const onSubmit = (data) => {
+//     mutation.mutate(data);
+//   };
+
+//   return (
+//     <div className="flex items-center justify-center px-4 py-6 min-h-screen">
+//       <div className="bg-white max-w-[500px] w-full mx-2 mb-16 p-5 xs:p-10 rounded-lg shadow-Main">
+//         <div className="flex items-center justify-between mb-3">
+//           <h1 className="text-black text-xl xs:text-2xl">ورود به سایت</h1>
+//           <Button href="/" className="text-black font-semibold">
+//             بازگشت
+//           </Button>
+//         </div>
+
+//         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+//           <div className="space-y-2">
+//             <label className="text-gray-400 text-sm">شماره موبایل</label>
+//             <input
+//               {...register("phoneNumber")}
+//               type="text"
+//               placeholder="09xxxxxxxxx"
+//               className={`w-full bg-blue-100 p-2 rounded-md h-14 ${
+//                 errors.phoneNumber ? "border border-red-500" : ""
+//               }`}
+//             />
+//             {errors.phoneNumber && (
+//               <p className="text-red-500 text-xs">
+//                 {errors.phoneNumber.message}
+//               </p>
+//             )}
+
+//             <label className="text-gray-400 text-sm">رمز عبور</label>
+//             <input
+//               {...register("password")}
+//               type="password"
+//               placeholder="رمز عبور"
+//               className={`w-full bg-blue-100 p-2 rounded-md h-14 ${
+//                 errors.password ? "border border-red-500" : ""
+//               }`}
+//             />
+//             {errors.password && (
+//               <p className="text-red-500 text-xs">
+//                 {errors.password.message}
+//               </p>
+//             )}
+//           </div>
+
+//           <button
+//             type="submit"
+//             disabled={mutation.isPending}
+//             className="w-full p-2 text-white text-lg rounded-md bg-blue-500 hover:bg-blue-600 h-12 disabled:opacity-50"
+//           >
+//             {mutation.isPending ? "در حال ورود..." : "ورود"}
+//           </button>
+
+//           <div className="text-center">
+//             <span className="text-zinc-800">حسابی ندارید؟</span>
+//             <Button href="/register" className="text-blue-500 ml-1">
+//               ثبت نام
+//             </Button>
+//           </div>
+//         </form>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import React from "react";
+// import { useForm } from "react-hook-form";
+// import { z } from "zod";
+// import { zodResolver } from "@hookform/resolvers/zod";
+// import { useMutation } from "@tanstack/react-query";
+// import axios from "axios";
+// import Swal from "sweetalert2";
+// import Button from "@/component/Button";
+// import { useNavigate } from "react-router-dom";
+
+// /* =====================
+//    Validation Schema
+// ===================== */
+// const schema = z.object({
+//   phoneNumber: z
+//     .string()
+//     .length(11, "شماره موبایل باید ۱۱ رقم باشد")
+//     .regex(/^09\d{9}$/, "شماره موبایل نامعتبر است"),
+//   password: z.string().min(6, "رمز عبور حداقل ۶ کاراکتر باشد"),
+// });
+
+// /* =====================
+//    API Call
+// ===================== */
+// const loginUser = async (data) => {
+//   const payload = {
+//     loginMethod: "local",
+//     credentials: {
+//       phoneNumber: data.phoneNumber,
+//       password: data.password,
+//     },
+//   };
+
+//   console.log("📤 Login payload:", payload);
+
+//   const response = await axios.post(
+//     "https://dentist-reyn.onrender.com/api/v1/auth/login",
+//     payload,
+//     { 
+//       headers: { "Content-Type": "application/json" },
+//       withCredentials: true // این خیلی مهمه! کوکی ذخیره میشه
+//     }
+//   );
+
+//   // لاگ گرفتن از هدرها برای دیدن Set-Cookie
+//   console.log("📨 Response headers:", response.headers);
+//   console.log("🍪 Set-Cookie:", response.headers['set-cookie']);
+//   console.log("📦 Response body:", response.data); // اینو نگاه کن!
+
+//   return response.data;
+// };
+
+// /* =====================
+//    Component
+// ===================== */
+// export default function Login() {
+//   const navigate = useNavigate();
+
+//   const {
+//     register,
+//     handleSubmit,
+//     formState: { errors },
+//   } = useForm({
+//     resolver: zodResolver(schema),
+//   });
+
+//   const mutation = useMutation({
+//     mutationFn: loginUser,
+//     onSuccess: (data) => {
+//       console.log("✅ Login response:", data);
+      
+//       // یه کمی صبر کن تا کوکی ذخیره بشه
+//       setTimeout(() => {
+//         console.log("🍪 Cookies after login:", document.cookie);
+//       }, 1000);
+
+//       Swal.fire({
+//         icon: "success",
+//         title: "موفق",
+//         text: "ورود با موفقیت انجام شد",
+//         timer: 1500,
+//         showConfirmButton: false
+//       });
+
+//       navigate("/");
+//     },
+//     onError: (error) => {
+//       console.log("❌ Login error:", error.response?.data || error.message);
+      
+//       Swal.fire(
+//         "خطا",
+//         error.response?.data?.message || "اطلاعات ورود نادرست است",
+//         "error"
+//       );
+//     },
+//   });
+
+//   const onSubmit = (data) => {
+//     mutation.mutate(data);
+//   };
+
+//   return (
+//     <div className="flex items-center justify-center px-4 py-6 min-h-screen">
+//       <div className="bg-white max-w-[500px] w-full mx-2 mb-16 p-5 xs:p-10 rounded-lg shadow-Main">
+//         <div className="flex items-center justify-between mb-3">
+//           <h1 className="text-black text-xl xs:text-2xl">ورود به سایت</h1>
+//           <Button href="/" className="text-black font-semibold">
+//             بازگشت
+//           </Button>
+//         </div>
+
+//         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+//           <div className="space-y-2">
+//             <label className="text-gray-400 text-sm">شماره موبایل</label>
+//             <input
+//               {...register("phoneNumber")}
+//               type="text"
+//               placeholder="09xxxxxxxxx"
+//               className={`w-full bg-blue-100 p-2 rounded-md h-14 ${
+//                 errors.phoneNumber ? "border border-red-500" : ""
+//               }`}
+//             />
+//             {errors.phoneNumber && (
+//               <p className="text-red-500 text-xs">
+//                 {errors.phoneNumber.message}
+//               </p>
+//             )}
+
+//             <label className="text-gray-400 text-sm">رمز عبور</label>
+//             <input
+//               {...register("password")}
+//               type="password"
+//               placeholder="رمز عبور"
+//               className={`w-full bg-blue-100 p-2 rounded-md h-14 ${
+//                 errors.password ? "border border-red-500" : ""
+//               }`}
+//             />
+//             {errors.password && (
+//               <p className="text-red-500 text-xs">
+//                 {errors.password.message}
+//               </p>
+//             )}
+//           </div>
+
+//           <button
+//             type="submit"
+//             disabled={mutation.isPending}
+//             className="w-full p-2 text-white text-lg rounded-md bg-blue-500 hover:bg-blue-600 h-12 disabled:opacity-50"
+//           >
+//             {mutation.isPending ? "در حال ورود..." : "ورود"}
+//           </button>
+
+//           <div className="text-center">
+//             <span className="text-zinc-800">حسابی ندارید؟</span>
+//             <Button href="/register" className="text-blue-500 ml-1">
+//               ثبت نام
+//             </Button>
+//           </div>
+//         </form>
+
+//         {/* بخش دیباگ - می‌تونی بعد از تست پاکش کنی */}
+//         <div className="mt-4 p-2 bg-gray-100 rounded text-xs">
+//           <div>🍪 Cookie status: {document.cookie ? 'دارد' : 'ندارد'}</div>
+//           <div>🔒 HttpOnly: بله (در JS قابل مشاهده نیست)</div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -31,13 +380,32 @@ const loginUser = async (data) => {
     },
   };
 
-  console.log("Login payload:", payload);
+  console.log("📤 Login payload:", payload);
 
   const response = await axios.post(
     "https://dentist-reyn.onrender.com/api/v1/auth/login",
     payload,
-    { headers: { "Content-Type": "application/json" } }
+    { 
+      headers: { "Content-Type": "application/json" },
+      withCredentials: true // همچنان نگهش میداریم شاید بعداً درست شد
+    }
   );
+
+  console.log("📦 Response body:", response.data);
+
+  // ========== روش موقت برای تست ==========
+  // چون سرور توکن نمیده، ما اطلاعات رو تو localStorage ذخیره می‌کنیم
+  if (response.status === 200) {
+    // ذخیره اطلاعات کاربر در localStorage
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userPhone', data.phoneNumber);
+    localStorage.setItem('userLoginTime', Date.now().toString());
+    
+    console.log("✅ اطلاعات کاربر در localStorage ذخیره شد:", {
+      phone: data.phoneNumber,
+      loginTime: new Date().toLocaleString()
+    });
+  }
 
   return response.data;
 };
@@ -59,16 +427,34 @@ export default function Login() {
   const mutation = useMutation({
     mutationFn: loginUser,
     onSuccess: (data) => {
-      console.log("Login response:", data);
+      console.log("✅ Login successful:", data);
+      
+      // چک کردن اطلاعات ذخیره شده
+      const isLoggedIn = localStorage.getItem('isLoggedIn');
+      const userPhone = localStorage.getItem('userPhone');
+      console.log("📱 اطلاعات ذخیره شده:", { isLoggedIn, userPhone });
 
-      Swal.fire("موفق", "ورود با موفقیت انجام شد", "success");
+      Swal.fire({
+        icon: "success",
+        title: "ورود موفق",
+        text: `خوش آمدید ${userPhone}`,
+        timer: 1500,
+        showConfirmButton: false
+      });
 
-      // فعلاً هیچ کاری با توکن نداریم
-      // بعداً اینجا می‌تونی store یا cookie رو اضافه کنی
-
-      navigate("/");
+      // یه کمی صبر کن بعد برو صفحه اصلی
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
     },
     onError: (error) => {
+      console.log("❌ Login error:", error.response?.data || error.message);
+      
+      // پاک کردن اطلاعات در صورت خطا
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('userPhone');
+      localStorage.removeItem('userLoginTime');
+      
       Swal.fire(
         "خطا",
         error.response?.data?.message || "اطلاعات ورود نادرست است",
@@ -139,12 +525,23 @@ export default function Login() {
             </Button>
           </div>
         </form>
+
+        {/* بخش دیباگ - وضعیت localStorage رو نشون میده */}
+        <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs border border-gray-200">
+          <div className="font-bold mb-2">🔧 وضعیت دیباگ:</div>
+          <div className="space-y-1">
+            <div>🍪 کوکی: {document.cookie ? 'دارد' : 'ندارد'}</div>
+            <div>📱 وضعیت لاگین: {localStorage.getItem('isLoggedIn') === 'true' ? 'لاگین' : 'خارج'}</div>
+            <div>📞 شماره: {localStorage.getItem('userPhone') || '---'}</div>
+            {localStorage.getItem('userLoginTime') && (
+              <div>⏰ زمان: {new Date(parseInt(localStorage.getItem('userLoginTime'))).toLocaleString()}</div>
+            )}
+          </div>
+          <div className="mt-2 text-yellow-600 bg-yellow-50 p-1 rounded">
+            ⚠️ حالت موقت - منتظر رفع مشکل بک‌اند
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
-
-
-
-    

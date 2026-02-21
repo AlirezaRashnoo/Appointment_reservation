@@ -456,8 +456,32 @@ import { useUserStore } from './stores/useUserStore';
 import { useQuery } from '@tanstack/react-query';
 import { ClipLoader } from 'react-spinners';
 
-// تابع ساده برای گرفتن اطلاعات کاربر از API
+// تابع برای گرفتن اطلاعات کاربر
 const fetchUserProfile = async () => {
+  // ========== روش موقت برای تست ==========
+  // اول چک میکنیم ببینیم کاربر لاگین کرده یا نه (با localStorage)
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const userPhone = localStorage.getItem('userPhone');
+  
+  console.log('🔍 وضعیت لاگین:', { isLoggedIn, userPhone });
+
+  // اگه کاربر لاگین کرده بود، اطلاعات تستی برمیگردونیم
+  if (isLoggedIn && userPhone) {
+    console.log('✅ کاربر با اطلاعات تستی:', userPhone);
+    return {
+      id: 1,
+      name: "کاربر تستی",
+      email: `${userPhone}@test.com`,
+      phone: userPhone,
+      role: "user"
+    };
+  }
+
+  // اگه لاگین نبود، null برمیگردونیم
+  return null;
+
+  // ========== روش واقعی (وقتی سرور درست شد) ==========
+  /*
   const response = await fetch('https://dentist-reyn.onrender.com/api/v1/users/me', {
     method: 'GET',
     headers: {
@@ -476,6 +500,7 @@ const fetchUserProfile = async () => {
   }
 
   return response.json();
+  */
 };
 
 function App() {
@@ -483,7 +508,7 @@ function App() {
   const setProfile = useUserStore((state) => state.setProfile);
   const profile = useUserStore((state) => state.profile);
 
-  const { data: user, isLoading, error } = useQuery({
+  const { isLoading, error } = useQuery({
     queryKey: ['currentUser'],
     queryFn: fetchUserProfile,
     onSuccess: (data) => {
@@ -498,6 +523,14 @@ function App() {
     refetchOnWindowFocus: false,
   });
 
+  // تابع خروج
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userPhone');
+    setProfile(null);
+    window.location.href = '/login';
+  };
+
   // نمایش لودینگ
   if (isLoading) {
     return (
@@ -507,10 +540,25 @@ function App() {
     );
   }
 
-  // رندر اصلی اپلیکیشن
+  // نمایش خطا
+  if (error) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'red' }}>
+        <div>خطا در ارتباط با سرور: {error.message}</div>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}
+        >
+          تلاش مجدد
+        </button>
+      </div>
+    );
+  }
+
+  // رندر اصلی با نوار وضعیت
   return (
     <>
-      {/* نوار وضعیت کاربر در بالای صفحه */}
+      {/* نوار وضعیت بالای صفحه */}
       <div style={{
         background: '#f8f9fa',
         padding: '10px 20px',
@@ -523,21 +571,17 @@ function App() {
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
           <span style={{ fontWeight: 'bold' }}>وضعیت:</span>
           
-          {error ? (
-            // نمایش خطا
-            <span style={{ color: '#dc3545', background: '#f8d7da', padding: '5px 10px', borderRadius: '4px' }}>
-              ❌ خطا: {error.message}
-            </span>
-          ) : profile ? (
+          {profile ? (
             // نمایش اطلاعات کاربر
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ color: '#28a745', background: '#d4edda', padding: '5px 10px', borderRadius: '4px' }}>
-                ✅ کاربر لاگین شده
+                ✅ {profile.name}
               </span>
-              <span>👤 نام: {profile.name || profile.full_name || 'نامشخص'}</span>
-              <span>📧 ایمیل: {profile.email}</span>
-              {profile.role && <span>🔰 نقش: {profile.role}</span>}
-              {profile.id && <span>🆔 آیدی: {profile.id}</span>}
+              <span>📧 {profile.email}</span>
+              <span>📱 {profile.phone}</span>
+              <span style={{ fontSize: '11px', color: '#ff9800', background: '#fff3e0', padding: '3px 8px', borderRadius: '3px' }}>
+                ⚠️ حالت تستی
+              </span>
             </div>
           ) : (
             // نمایش کاربر مهمان
@@ -547,57 +591,26 @@ function App() {
           )}
         </div>
         
-        {/* دکمه رفرش برای تست */}
-        <button 
-          onClick={() => window.location.reload()}
-          style={{
-            padding: '5px 15px',
-            background: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          🔄 رفرش صفحه
-        </button>
+        {/* دکمه خروج */}
+        {profile && (
+          <button 
+            onClick={handleLogout}
+            style={{
+              padding: '5px 15px',
+              background: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            🚪 خروج
+          </button>
+        )}
       </div>
 
       {/* محتوای اصلی */}
       {router}
-
-      {/* خطا رو همچنین می‌تونیم وسط صفحه هم نشون بدیم */}
-      {error && (
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'white',
-          padding: '30px',
-          borderRadius: '10px',
-          boxShadow: '0 0 20px rgba(0,0,0,0.1)',
-          textAlign: 'center',
-          border: '1px solid #dc3545'
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>❌</div>
-          <h3 style={{ color: '#dc3545', marginBottom: '10px' }}>خطا در دریافت اطلاعات</h3>
-          <p style={{ color: '#6c757d', marginBottom: '20px' }}>{error.message}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            style={{
-              padding: '10px 30px',
-              background: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            تلاش مجدد
-          </button>
-        </div>
-      )}
 
       <ToastContainer
         position="top-right"
