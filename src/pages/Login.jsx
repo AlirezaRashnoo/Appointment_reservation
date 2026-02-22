@@ -391,21 +391,12 @@ const loginUser = async (data) => {
     }
   );
 
+  console.log("📨 Response headers:", response.headers);
   console.log("📦 Response body:", response.data);
 
-  // ========== روش موقت برای تست ==========
-  // چون سرور توکن نمیده، ما اطلاعات رو تو localStorage ذخیره می‌کنیم
-  if (response.status === 200) {
-    // ذخیره اطلاعات کاربر در localStorage
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userPhone', data.phoneNumber);
-    localStorage.setItem('userLoginTime', Date.now().toString());
-    
-    console.log("✅ اطلاعات کاربر در localStorage ذخیره شد:", {
-      phone: data.phoneNumber,
-      loginTime: new Date().toLocaleString()
-    });
-  }
+  // ========== ذخیره توکن از هر جایی که هست ==========
+  
+ 
 
   return response.data;
 };
@@ -429,15 +420,14 @@ export default function Login() {
     onSuccess: (data) => {
       console.log("✅ Login successful:", data);
       
-      // چک کردن اطلاعات ذخیره شده
-      const isLoggedIn = localStorage.getItem('isLoggedIn');
-      const userPhone = localStorage.getItem('userPhone');
-      console.log("📱 اطلاعات ذخیره شده:", { isLoggedIn, userPhone });
-
+      // چک کن ببینم توکن الان توی localStorage هست؟
+      const savedToken = localStorage.getItem('token');
+      console.log("🎟️ Token in localStorage:", savedToken ? 'دارد' : 'ندارد');
+      
       Swal.fire({
         icon: "success",
-        title: "ورود موفق",
-        text: `خوش آمدید ${userPhone}`,
+        title: "موفق",
+        text: "ورود با موفقیت انجام شد",
         timer: 1500,
         showConfirmButton: false
       });
@@ -445,15 +435,10 @@ export default function Login() {
       // یه کمی صبر کن بعد برو صفحه اصلی
       setTimeout(() => {
         navigate("/");
-      }, 1500);
+      }, 1000);
     },
     onError: (error) => {
       console.log("❌ Login error:", error.response?.data || error.message);
-      
-      // پاک کردن اطلاعات در صورت خطا
-      localStorage.removeItem('isLoggedIn');
-      localStorage.removeItem('userPhone');
-      localStorage.removeItem('userLoginTime');
       
       Swal.fire(
         "خطا",
@@ -526,21 +511,7 @@ export default function Login() {
           </div>
         </form>
 
-        {/* بخش دیباگ - وضعیت localStorage رو نشون میده */}
-        <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs border border-gray-200">
-          <div className="font-bold mb-2">🔧 وضعیت دیباگ:</div>
-          <div className="space-y-1">
-            <div>🍪 کوکی: {document.cookie ? 'دارد' : 'ندارد'}</div>
-            <div>📱 وضعیت لاگین: {localStorage.getItem('isLoggedIn') === 'true' ? 'لاگین' : 'خارج'}</div>
-            <div>📞 شماره: {localStorage.getItem('userPhone') || '---'}</div>
-            {localStorage.getItem('userLoginTime') && (
-              <div>⏰ زمان: {new Date(parseInt(localStorage.getItem('userLoginTime'))).toLocaleString()}</div>
-            )}
-          </div>
-          <div className="mt-2 text-yellow-600 bg-yellow-50 p-1 rounded">
-            ⚠️ حالت موقت - منتظر رفع مشکل بک‌اند
-          </div>
-        </div>
+        
       </div>
     </div>
   );

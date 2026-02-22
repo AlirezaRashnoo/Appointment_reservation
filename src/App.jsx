@@ -447,91 +447,254 @@
 
 
 
-import React from 'react';
+// import React from 'react';
+// import { useRoutes } from "react-router-dom";
+// import { ToastContainer, Bounce } from 'react-toastify';
+// import 'react-toastify/dist/ReactToastify.css';
+// import routes from './routes';
+// import { useUserStore } from './stores/useUserStore';
+// import { useQuery } from '@tanstack/react-query';
+// import { ClipLoader } from 'react-spinners';
+
+// // تابع برای گرفتن اطلاعات کاربر
+// const fetchUserProfile = async () => {
+//   // ========== روش موقت برای تست ==========
+//   // اول چک میکنیم ببینیم کاربر لاگین کرده یا نه (با localStorage)
+//   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+//   const userPhone = localStorage.getItem('userPhone');
+  
+//   console.log('🔍 وضعیت لاگین:', { isLoggedIn, userPhone });
+
+//   // اگه کاربر لاگین کرده بود، اطلاعات تستی برمیگردونیم
+//   if (isLoggedIn && userPhone) {
+//     console.log('✅ کاربر با اطلاعات تستی:', userPhone);
+//     return {
+//       id: 1,
+//       name: "کاربر تستی",
+//       email: `${userPhone}@test.com`,
+//       phone: userPhone,
+//       role: "user"
+//     };
+//   }
+
+//   // اگه لاگین نبود، null برمیگردونیم
+//   return null;
+
+//   // ========== روش واقعی (وقتی سرور درست شد) ==========
+//   /*
+//   const response = await fetch('https://dentist-reyn.onrender.com/api/v1/users/me', {
+//     method: 'GET',
+//     headers: {
+//       'Content-Type': 'application/json',
+//     },
+//     credentials: 'include',
+//   });
+
+//   if (response.status === 401) {
+//     console.log('👤 کاربر لاگین نیست (401)');
+//     return null;
+//   }
+
+//   if (!response.ok) {
+//     throw new Error(`خطا در دریافت اطلاعات: ${response.status}`);
+//   }
+
+//   return response.json();
+//   */
+// };
+
+// function App() {
+//   const router = useRoutes(routes);
+//   const setProfile = useUserStore((state) => state.setProfile);
+//   const profile = useUserStore((state) => state.profile);
+
+//   const { isLoading, error } = useQuery({
+//     queryKey: ['currentUser'],
+//     queryFn: fetchUserProfile,
+//     onSuccess: (data) => {
+//       if (data) {
+//         setProfile(data);
+//         console.log('✅ پروفایل کاربر ذخیره شد:', data);
+//       } else {
+//         setProfile(null);
+//       }
+//     },
+//     retry: false,
+//     refetchOnWindowFocus: false,
+//   });
+
+//   // تابع خروج
+//   const handleLogout = () => {
+//     localStorage.removeItem('isLoggedIn');
+//     localStorage.removeItem('userPhone');
+//     setProfile(null);
+//     window.location.href = '/login';
+//   };
+
+//   // نمایش لودینگ
+//   if (isLoading) {
+//     return (
+//       <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+//         <ClipLoader size={60} color="#36d7b7" />
+//       </div>
+//     );
+//   }
+
+//   // نمایش خطا
+//   if (error) {
+//     return (
+//       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'red' }}>
+//         <div>خطا در ارتباط با سرور: {error.message}</div>
+//         <button 
+//           onClick={() => window.location.reload()}
+//           style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}
+//         >
+//           تلاش مجدد
+//         </button>
+//       </div>
+//     );
+//   }
+
+//   // رندر اصلی با نوار وضعیت
+//   return (
+//     <>
+//       {/* نوار وضعیت بالای صفحه */}
+//       <div style={{
+//         background: '#f8f9fa',
+//         padding: '10px 20px',
+//         borderBottom: '1px solid #dee2e6',
+//         display: 'flex',
+//         justifyContent: 'space-between',
+//         alignItems: 'center',
+//         direction: 'rtl'
+//       }}>
+//         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+//           <span style={{ fontWeight: 'bold' }}>وضعیت:</span>
+          
+//           {profile ? (
+//             // نمایش اطلاعات کاربر
+//             <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+//               <span style={{ color: '#28a745', background: '#d4edda', padding: '5px 10px', borderRadius: '4px' }}>
+//                 ✅ {profile.name}
+//               </span>
+//               <span>📧 {profile.email}</span>
+//               <span>📱 {profile.phone}</span>
+//               <span style={{ fontSize: '11px', color: '#ff9800', background: '#fff3e0', padding: '3px 8px', borderRadius: '3px' }}>
+//                 ⚠️ حالت تستی
+//               </span>
+//             </div>
+//           ) : (
+//             // نمایش کاربر مهمان
+//             <span style={{ color: '#6c757d', background: '#e2e3e5', padding: '5px 10px', borderRadius: '4px' }}>
+//               👤 کاربر مهمان (لاگین نشده)
+//             </span>
+//           )}
+//         </div>
+        
+//         {/* دکمه خروج */}
+//         {profile && (
+//           <button 
+//             onClick={handleLogout}
+//             style={{
+//               padding: '5px 15px',
+//               background: '#dc3545',
+//               color: 'white',
+//               border: 'none',
+//               borderRadius: '4px',
+//               cursor: 'pointer'
+//             }}
+//           >
+//             🚪 خروج
+//           </button>
+//         )}
+//       </div>
+
+//       {/* محتوای اصلی */}
+//       {router}
+
+//       <ToastContainer
+//         position="top-right"
+//         autoClose={3000}
+//         hideProgressBar={false}
+//         newestOnTop={false}
+//         closeOnClick={false}
+//         rtl={false}
+//         pauseOnFocusLoss
+//         draggable
+//         pauseOnHover
+//         theme="light"
+//         transition={Bounce}
+//       />
+//     </>
+//   );
+// }
+
+// export default App;
+
+
+
+
+
+
+
+
+
+
+
+import React, { useEffect, useState } from 'react';
 import { useRoutes } from "react-router-dom";
 import { ToastContainer, Bounce } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import routes from './routes';
 import { useUserStore } from './stores/useUserStore';
-import { useQuery } from '@tanstack/react-query';
 import { ClipLoader } from 'react-spinners';
-
-// تابع برای گرفتن اطلاعات کاربر
-const fetchUserProfile = async () => {
-  // ========== روش موقت برای تست ==========
-  // اول چک میکنیم ببینیم کاربر لاگین کرده یا نه (با localStorage)
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  const userPhone = localStorage.getItem('userPhone');
-  
-  console.log('🔍 وضعیت لاگین:', { isLoggedIn, userPhone });
-
-  // اگه کاربر لاگین کرده بود، اطلاعات تستی برمیگردونیم
-  if (isLoggedIn && userPhone) {
-    console.log('✅ کاربر با اطلاعات تستی:', userPhone);
-    return {
-      id: 1,
-      name: "کاربر تستی",
-      email: `${userPhone}@test.com`,
-      phone: userPhone,
-      role: "user"
-    };
-  }
-
-  // اگه لاگین نبود، null برمیگردونیم
-  return null;
-
-  // ========== روش واقعی (وقتی سرور درست شد) ==========
-  /*
-  const response = await fetch('https://dentist-reyn.onrender.com/api/v1/users/me', {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
-
-  if (response.status === 401) {
-    console.log('👤 کاربر لاگین نیست (401)');
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(`خطا در دریافت اطلاعات: ${response.status}`);
-  }
-
-  return response.json();
-  */
-};
 
 function App() {
   const router = useRoutes(routes);
   const setProfile = useUserStore((state) => state.setProfile);
   const profile = useUserStore((state) => state.profile);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { isLoading, error } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: fetchUserProfile,
-    onSuccess: (data) => {
-      if (data) {
-        setProfile(data);
-        console.log('✅ پروفایل کاربر ذخیره شد:', data);
-      } else {
-        setProfile(null);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        console.log('🔍 ===== درخواست به /users/me =====');
+        
+        const response = await fetch('https://dentist-reyn.onrender.com/api/v1/users/me', {
+          method: 'GET',
+          credentials: 'include',
+        });
+  
+        console.log('📨 وضعیت پاسخ:', response.status);
+        
+        // لاگ گرفتن از هدرهای پاسخ برای دیدن Set-Cookie
+        console.log('🍪 Set-Cookie:', response.headers.get('set-cookie'));
+  
+        if (response.status === 401) {
+          console.log('❌ کوکی معتبر نیست - تاریخ انقضا یا مشکل domain');
+          setProfile(null);
+          setIsLoading(false);
+          return;
+        }
+  
+        const result = await response.json();
+        console.log('✅ پاسخ:', result);
+        
+        if (result?.data) {
+          setProfile(result.data);
+        }
+  
+      } catch (err) {
+        console.error('❌ خطا:', err);
+      } finally {
+        setIsLoading(false);
       }
-    },
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
+    };
+  
+    fetchProfile();
+  }, [setProfile]);
+  
 
-  // تابع خروج
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userPhone');
-    setProfile(null);
-    window.location.href = '/login';
-  };
-
-  // نمایش لودینگ
   if (isLoading) {
     return (
       <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -540,25 +703,9 @@ function App() {
     );
   }
 
-  // نمایش خطا
-  if (error) {
-    return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'red' }}>
-        <div>خطا در ارتباط با سرور: {error.message}</div>
-        <button 
-          onClick={() => window.location.reload()}
-          style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer' }}
-        >
-          تلاش مجدد
-        </button>
-      </div>
-    );
-  }
-
-  // رندر اصلی با نوار وضعیت
   return (
     <>
-      {/* نوار وضعیت بالای صفحه */}
+      {/* نوار وضعیت ساده */}
       <div style={{
         background: '#f8f9fa',
         padding: '10px 20px',
@@ -566,65 +713,39 @@ function App() {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        direction: 'rtl'
       }}>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold' }}>وضعیت:</span>
-          
+        <div>
+          <strong>وضعیت:</strong>{' '}
           {profile ? (
-            // نمایش اطلاعات کاربر
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ color: '#28a745', background: '#d4edda', padding: '5px 10px', borderRadius: '4px' }}>
-                ✅ {profile.name}
-              </span>
-              <span>📧 {profile.email}</span>
-              <span>📱 {profile.phone}</span>
-              <span style={{ fontSize: '11px', color: '#ff9800', background: '#fff3e0', padding: '3px 8px', borderRadius: '3px' }}>
-                ⚠️ حالت تستی
-              </span>
-            </div>
-          ) : (
-            // نمایش کاربر مهمان
-            <span style={{ color: '#6c757d', background: '#e2e3e5', padding: '5px 10px', borderRadius: '4px' }}>
-              👤 کاربر مهمان (لاگین نشده)
+            <span style={{ color: 'green' }}>
+              ✅ {profile.phoneNumber} - {profile.role}
             </span>
+          ) : (
+            <span style={{ color: 'gray' }}>❌ لاگین نیست</span>
           )}
         </div>
         
-        {/* دکمه خروج */}
         {profile && (
-          <button 
-            onClick={handleLogout}
-            style={{
-              padding: '5px 15px',
-              background: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            🚪 خروج
+          <button onClick={handleLogout} style={{ background: '#dc3545', color: 'white', border: 'none', padding: '5px 15px' }}>
+            خروج
           </button>
         )}
       </div>
 
-      {/* محتوای اصلی */}
-      {router}
+      {/* دکمه لاگین */}
+      {!profile && (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <button 
+            onClick={() => window.location.href = '/login'}
+            style={{ padding: '10px 30px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px' }}
+          >
+            رفتن به صفحه لاگین
+          </button>
+        </div>
+      )}
 
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick={false}
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        transition={Bounce}
-      />
+      {router}
+      <ToastContainer />
     </>
   );
 }
