@@ -725,11 +725,7 @@ function App() {
           )}
         </div>
         
-        {profile && (
-          <button onClick={handleLogout} style={{ background: '#dc3545', color: 'white', border: 'none', padding: '5px 15px' }}>
-            خروج
-          </button>
-        )}
+        
       </div>
 
       {/* دکمه لاگین */}
