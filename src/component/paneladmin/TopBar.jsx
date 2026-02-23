@@ -7,7 +7,7 @@ import { FaCircleUser } from "react-icons/fa6";
 
 function TopBar() {
 
-    // const profile = useUserStore((state) => state.profile);
+    const profile = useUserStore((state) => state.profile);
     
 
 
@@ -20,19 +20,18 @@ function TopBar() {
                     آیکن زنگوله
                 </div>
                 <div className="flex items-center gap-x-3">
-                    =
                     <p>
-                        {/* {profile?.name} خوش آمدید! */}
-                        خوش آمدید
+                        {profile?.firstName} خوش آمدید!
+                        {/* خوش آمدید */}
                     </p>
-                    {/* {profile?.avatar_url?
+                    {profile?.avatar_url?
                     (
                         <img src={profile.avatar_url} alt="img100" className="size-10 rounded-full cursor-pointer ml-2"/>
                     ):(
                         <FaCircleUser className="size-10 fill-gray-500"/>
                     )
-                    } */}
-                    عکس پروفایل
+                    }
+                    {/* عکس پروفایل */}
                 </div>
             </div>
         </div>
