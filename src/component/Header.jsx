@@ -19,10 +19,10 @@ function Header() {
     const profile = useUserStore((state) => state.profile);
 
 
-    const dashboardLink =  profile?.status=="actived" ? getDashboardPath(profile.role) : "/login";
+    const dashboardLink =  profile?.status=="active" ? getDashboardPath(profile.role) : "/login";
 
     const isDentist = profile?.role === "dentist";
-    const isActived = profile?.status === "actived";
+    const isActived = profile?.status === "active";
     const isPending = profile?.status === "pending";
 
 
@@ -154,7 +154,7 @@ function Header() {
                                 </Button>
                                 ):(
                                 <Button href={dashboardLink} className="flex gap-x-3 items-center">
-                                    {profile?.status=="actived" ? (
+                                    {profile?.status=="active" ? (
                                     <>
                                         پنل کاربری
                                         <FiUser className="size-5"/>
