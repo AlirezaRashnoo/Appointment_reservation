@@ -276,47 +276,33 @@
 
 
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import axios from "axios"; // ایمپورت مستقیم axios
+import axios from "axios";
 import { useUserStore } from "@/stores/useUserStore";
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 
-// ==================== ایجاد axios instance ====================
+// ==================== ایجاد axios instance با پشتیبانی از کوکی ====================
 const axiosInstance = axios.create({
   baseURL: 'https://dentist-reyn.onrender.com',
   timeout: 10000,
+  withCredentials: true, // مهم: برای ارسال خودکار کوکی‌ها
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-// اینترسپتور برای اضافه کردن توکن به تمام درخواست‌ها
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken'); // یا از store خودتون
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // اینترسپتور برای مدیریت خطاها
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // توکن منقضی شده - هدایت به صفحه لاگین
-      localStorage.removeItem('accessToken');
+      // Unauthorized - هدایت به صفحه لاگین
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -325,11 +311,8 @@ axiosInstance.interceptors.response.use(
 
 // ==================== کامپوننت Toast سفارشی ====================
 const Toast = ({ message, type = 'success', onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 3000);
-
+  React.useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
@@ -550,6 +533,22 @@ export default function AccountDetails() {
   });
 
   // ==================== Form Setup ====================
+  const defaultValues = useMemo(() => ({
+    nationalCode: profile?.nationalCode || '',
+    medicalCouncilNumber: profile?.medicalCouncilNumber || '',
+    birthDateShamsi: profile?.birthDateShamsi || '',
+    occupation: profile?.occupation || '',
+    specialization: profile?.specialization || '',
+    degree: profile?.degree || '',
+    portfolio: profile?.portfolio || [],
+    additionalPhoneNumbers: profile?.additionalPhoneNumbers || [],
+    address: {
+      shortAddr: profile?.address?.shortAddr || '',
+      longAddr: profile?.address?.longAddr || '',
+    },
+    bio: profile?.bio || '',
+  }), [profile]);
+
   const {
     register,
     handleSubmit,
@@ -561,22 +560,18 @@ export default function AccountDetails() {
   } = useForm({
     resolver: zodResolver(schema),
     mode: 'onChange',
-    defaultValues: useMemo(() => ({
-      nationalCode: '',
-      medicalCouncilNumber: '',
-      birthDateShamsi: '',
-      occupation: '',
-      specialization: '',
-      degree: '',
-      portfolio: [],
-      additionalPhoneNumbers: [],
-      address: {
-        shortAddr: '',
-        longAddr: '',
-      },
-      bio: '',
-    }), []),
+    defaultValues,
   });
+
+  // ریست فرم وقتی پروفایل تغییر می‌کنه
+  React.useEffect(() => {
+    if (profile) {
+      reset(defaultValues);
+      if (profile.birthDateShamsi) {
+        setBirthDate(profile.birthDateShamsi);
+      }
+    }
+  }, [profile, reset, defaultValues]);
 
   // ==================== Field Arrays ====================
   const portfolioFields = useFieldArray({
@@ -588,31 +583,6 @@ export default function AccountDetails() {
     control,
     name: "additionalPhoneNumbers",
   });
-
-  // ==================== Effects ====================
-  useEffect(() => {
-    if (profile) {
-      reset({
-        nationalCode: profile.nationalCode || '',
-        medicalCouncilNumber: profile.medicalCouncilNumber || '',
-        birthDateShamsi: profile.birthDateShamsi || '',
-        occupation: profile.occupation || '',
-        specialization: profile.specialization || '',
-        degree: profile.degree || '',
-        portfolio: profile.portfolio || [],
-        additionalPhoneNumbers: profile.additionalPhoneNumbers || [],
-        address: {
-          shortAddr: profile.address?.shortAddr || '',
-          longAddr: profile.address?.longAddr || '',
-        },
-        bio: profile.bio || '',
-      });
-
-      if (profile.birthDateShamsi) {
-        setBirthDate(profile.birthDateShamsi);
-      }
-    }
-  }, [profile, reset]);
 
   // ==================== Handlers ====================
   const onDateChange = useCallback((date) => {
@@ -643,12 +613,15 @@ export default function AccountDetails() {
   const onSubmit = useCallback(async (data) => {
     try {
       // پاک کردن فیلدهای خالی
-      if (data.portfolio?.length === 0) delete data.portfolio;
-      if (data.additionalPhoneNumbers?.length === 0) delete data.additionalPhoneNumbers;
-      if (data.address?.shortAddr === '') delete data.address?.shortAddr;
-      if (data.address?.longAddr === '') delete data.address?.longAddr;
+      const cleanData = { ...data };
       
-      await updateMutation.mutateAsync(data);
+      if (cleanData.portfolio?.length === 0) delete cleanData.portfolio;
+      if (cleanData.additionalPhoneNumbers?.length === 0) delete cleanData.additionalPhoneNumbers;
+      if (cleanData.address?.shortAddr === '') delete cleanData.address?.shortAddr;
+      if (cleanData.address?.longAddr === '') delete cleanData.address?.longAddr;
+      if (cleanData.bio === '') delete cleanData.bio;
+      
+      await updateMutation.mutateAsync(cleanData);
     } catch (error) {
       console.error('Submit error:', error);
     }
