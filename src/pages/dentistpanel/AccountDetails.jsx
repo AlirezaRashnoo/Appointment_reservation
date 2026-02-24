@@ -49,7 +49,7 @@ return (
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">نام و نام خانوادگی</label>
               <input  className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+              {/* {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>} */}
             </div>
 
             {/* Phone */}

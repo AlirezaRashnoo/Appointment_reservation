@@ -11,18 +11,18 @@ function SidBar() {
 
     const navigate = useNavigate();
 
-    // const handleLogout = async () => {
-    //     try {
-    //       const { error } = await supabase.auth.signOut();
-    //       if (error) throw error;
+    const handleLogout = async () => {
+        try {
+          const { error } = await supabase.auth.signOut();
+          if (error) throw error;
     
-    //       clearProfile(); 
-    //       navigate("/"); 
-    //     } catch (err) {
-    //       console.error("خطا در خروج از حساب:", err.message);
-    //       alert("مشکلی در خروج از حساب رخ داد");
-    //     }
-    //   };
+          clearProfile(); 
+          navigate("/"); 
+        } catch (err) {
+          console.error("خطا در خروج از حساب:", err.message);
+          alert("مشکلی در خروج از حساب رخ داد");
+        }
+      };
 
     return ( 
         <>

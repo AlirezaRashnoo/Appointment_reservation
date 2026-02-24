@@ -7,7 +7,7 @@ import { FaCircleUser } from "react-icons/fa6";
 
 function TopBar() {
 
-    const profile = useUserStore((state) => state.profile);
+    const userInfo = useUserStore((state) => state.profile);
     
 
 
@@ -21,12 +21,12 @@ function TopBar() {
                 </div>
                 <div className="flex items-center gap-x-3">
                     <p>
-                        {profile?.firstName} خوش آمدید!
+                        {userInfo?.profile.firstName} خوش آمدید!
                         {/* خوش آمدید */}
                     </p>
-                    {profile?.avatar_url?
+                    {userInfo?.avatar_url?
                     (
-                        <img src={profile.avatar_url} alt="img100" className="size-10 rounded-full cursor-pointer ml-2"/>
+                        <img src={userInfo.avatar_url} alt="img100" className="size-10 rounded-full cursor-pointer ml-2"/>
                     ):(
                         <FaCircleUser className="size-10 fill-gray-500"/>
                     )

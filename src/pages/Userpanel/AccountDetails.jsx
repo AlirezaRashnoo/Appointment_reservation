@@ -241,7 +241,7 @@ function AccountDetails() {
         firstName: profileData.firstName,
         lastName: profileData.lastName,
         fullName: profileData.fullName || 
-                 `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim(),
+        `${profileData.firstName || ''} ${profileData.lastName || ''}`.trim(),
         bio: profileData.bio,
         avatar_url: profileData.avatar,
         phone: apiData.phoneNumber,
