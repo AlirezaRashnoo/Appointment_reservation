@@ -683,7 +683,7 @@ export default function AccountDetails() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">نام و نام خانوادگی</label>
                 <input 
-                  value={`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || '---'}
+                  value={`${user?.profile?.fullName}`|| '---'}
                   disabled 
                   className="w-full mt-1 p-2.5 rounded-md text-sm bg-gray-100 border border-gray-200 cursor-not-allowed"
                 />
@@ -693,7 +693,7 @@ export default function AccountDetails() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">شماره موبایل</label>
                 <input 
-                  value={user?.phoneNumber || '---'}
+                  value={user?.profile?.phoneNumber || '---'}
                   disabled 
                   className="w-full mt-1 p-2.5 rounded-md text-sm bg-gray-100 border border-gray-200 cursor-not-allowed"
                 />
@@ -703,7 +703,7 @@ export default function AccountDetails() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">ایمیل</label>
                 <input 
-                  value={user?.email || '---'}
+                  value={user?.profile?.email || '---'}
                   disabled 
                   className="w-full mt-1 p-2.5 rounded-md text-sm bg-gray-100 border border-gray-200 cursor-not-allowed"
                 />
