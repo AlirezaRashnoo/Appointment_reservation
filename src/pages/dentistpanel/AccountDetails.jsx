@@ -546,7 +546,7 @@ export default function AccountDetails() {
             <div>
               <label htmlFor="bio" className="block text-sm font-medium text-gray-700">درباره من</label>
               <textarea
-                {...register("user.bio")}
+                {...register("profile.bio")}
                 rows={5}
                 className="mt-1 w-full p-2.5 rounded-md text-sm border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
                 placeholder="توضیحات درباره تخصص، سابقه و ..."

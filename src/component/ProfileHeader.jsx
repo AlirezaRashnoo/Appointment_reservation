@@ -104,10 +104,23 @@ function ProfileHeader({children}) {
           </div>
 
           {/* Name */}
-          <p className="mb-2 text-[17px] font-semibold">{user?.profile.fullName || "بدون نام"}</p>
+          {user?.role=="dentist"?
+            (
+              <>
+                <p className="mb-2 text-[17px] font-semibold">{user?.profile?.fullName || "بدون نام"}</p>
+                <p className="mb-2 text-sm">{user?.profile?.phoneNumber || "شماره‌ای وارد نشده"}</p>
+              </>
 
-          {/* Phone */}
-          <p className="mb-2 text-sm">{user?.phoneNumber || "شماره‌ای وارد نشده"}</p>
+            
+            ):(
+              <>
+                <p className="mb-2 text-[17px] font-semibold">{user?.fullName || "بدون نام"}</p>
+                <p className="mb-2 text-sm">{user?.phone || "شماره‌ای وارد نشده"}</p>
+              </>
+            )
+
+          }
+
         </div>
 
         {/* --- Menu Links --- */}
@@ -120,10 +133,7 @@ function ProfileHeader({children}) {
     </>
   );
 
-  return(
-    <div>Header</div>
-
-  )
+  
 }
 
 export default ProfileHeader;
