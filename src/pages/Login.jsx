@@ -434,7 +434,8 @@ export default function Login() {
 
       // یه کمی صبر کن بعد برو صفحه اصلی
       setTimeout(() => {
-        navigate("/");
+        // navigate("/");
+        window.location="/";
       }, 1000);
     },
     onError: (error) => {
