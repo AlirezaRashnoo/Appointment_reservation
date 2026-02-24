@@ -44,16 +44,27 @@ export default function RegisterDentist() {
           </div>
   
           <div className="flex items-center justify-center mt-8">
-            <form  className="w-2/3 child:mb-4 child:pb-1 space-y-6">
+            <form  className="w-2/3 child:mb-4 child:pb-1 lg:grid grid-cols-2 gap-3">
               
               <div className="space-y-2">
-                <label className="font-semibold">نام و نام خانوادگی</label>
+                <label className="font-semibold">نام</label>
+                <input type="text" className="h-11 pt-1.5 px-3 rounded-lg text-sm w-full outline-none bg-white" placeholder="کیبورد در حالت تایپ فارسی باشد" />
+                {/* {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>} */}
+              </div>
+              <div className="space-y-2">
+                <label className="font-semibold">نام خانوادگی</label>
                 <input type="text" className="h-11 pt-1.5 px-3 rounded-lg text-sm w-full outline-none bg-white" placeholder="کیبورد در حالت تایپ فارسی باشد" />
                 {/* {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>} */}
               </div>
   
               <div className="space-y-2">
                 <label className="font-semibold">کد نظام پزشکی</label>
+                <input type="text" className="h-11 pt-1.5 px-3 rounded-lg text-sm w-full outline-none bg-white" placeholder="کد نظام پزشکی بین 6 تا 12 رقم می باشد"  />
+                {/* {errors.medical_code && <p className="text-red-500 text-sm">{errors.medical_code.message}</p>} */}
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-semibold">کد ملی</label>
                 <input type="text" className="h-11 pt-1.5 px-3 rounded-lg text-sm w-full outline-none bg-white" placeholder="کد نظام پزشکی بین 6 تا 12 رقم می باشد"  />
                 {/* {errors.medical_code && <p className="text-red-500 text-sm">{errors.medical_code.message}</p>} */}
               </div>
@@ -80,6 +91,11 @@ export default function RegisterDentist() {
               </div>
               <div className="space-y-2">
                 <label className="font-semibold">رمز عبور</label>
+                <input type="password" className="h-11 pt-1.5 px-3 rounded-lg text-sm w-full outline-none bg-white"  />
+                {/* {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>} */}
+              </div>
+              <div className="space-y-2">
+                <label className="font-semibold">تکرار رمز عبور</label>
                 <input type="password" className="h-11 pt-1.5 px-3 rounded-lg text-sm w-full outline-none bg-white"  />
                 {/* {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>} */}
               </div>
