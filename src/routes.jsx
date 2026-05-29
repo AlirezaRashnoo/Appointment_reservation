@@ -26,11 +26,15 @@ import Unauthorized from "./pages/Unauthorized"
 import TakingVisit from "./pages/app/TakingVisit"
 import AppointmentsUser from "./pages/Userpanel/Appointments"
 import UsersList from "./pages/adminpanel/user-management/UsersList"
-import ProfileUser from "./pages/adminpanel/user-management/ProfileUser"
+
 // import RoleProtectedRoute from "./features/RoleProtectedRoute "
 import AppointmentsDentist from "./pages/dentistpanel/Appointments"
 import ScheduleSettings from "./pages/dentistpanel/ScheduleSettings"
 import VerifyOTP from "./pages/VerifyOTP"
+import DentistProfile from "./pages/adminpanel/user-management/DentistProfile"
+import Patients from "./pages/adminpanel/user-management/Patients"
+import ProfilePatients from "./pages/adminpanel/user-management/ProfilePatients"
+import DentistList from "./pages/adminpanel/user-management/DentistList"
 
 
 let routes = [
@@ -84,22 +88,25 @@ let routes = [
   
     // 🛠 Admin Panel (محافظت‌شده)
     {
-      path: "/admin-panel/*",
-      element: 
-      // <RoleProtectedRoute allowedRoles={["admin"]}>
-          <AdminPanel />,
-      // </RoleProtectedRoute>,
+      path: "/admin-panel",
+      element: <AdminPanel />,
       children: [
-        { path: "home", element: <HomeAdminPanel /> },
-        {
-          path: "users/*",
-          element: <Users />,
-          children: [
-            { index: true, element: <UsersList /> },
-            { path: ":id", element: <ProfileUser /> },
-          ],
-        },
+        { index: true, element: <HomeAdminPanel /> },
+        { path: "home", element: <HomeAdminPanel /> }, // ✅ مسیر جایگزین
+        
+        // ===== مسیرهای مدیریت کاربران (Flat) =====
+        { path: "users", element: <UsersList /> },                    // لیست همه کاربران
+        { path: "users/dentists", element: <DentistProfile /> },      // لیست دندانپزشکان
+        { path: "users/patients", element: <Patients/> },        // لیست بیماران
+        { path: "users/dentist", element: <DentistList/> },        // لیست بیماران
+        
+        // پروفایل‌ها (با شناسه)
+        { path: "user/dentist/:id", element: <DentistProfile /> },    // پروفایل دندانپزشک
+        { path: "user/patient/:id", element: <ProfilePatients /> },    // پروفایل بیمار
+        
+        // ===== سایر بخش‌ها =====
         { path: "articles", element: <Articles /> },
+        { path: "articles/:id", element: <Articles /> },              // جزئیات مقاله
         { path: "comments", element: <Comments /> },
       ],
     },
