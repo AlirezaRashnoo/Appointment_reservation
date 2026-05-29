@@ -69,7 +69,7 @@ const ErrorState = ({ error, onRetry }) => (
 // تابع دریافت دیتا
 const fetchDentists = async () => {
   try {
-    const response = await api.get('/api/v1/dentist/all');
+    const response = await api.get('/api/v1/dentist/all?limit=10&page=1&orderBy=averageRating');
     return response.data;
   } catch (error) {
     // لاگ خطا برای دیباگ
@@ -216,7 +216,7 @@ export default function AllDentist() {
               <p className="text-gray-500">هیچ دندانپزشکی یافت نشد</p>
             </div>
           ) : (
-            <div className="space-y-3 md:grid md:grid-cols-2 md:gap-x-2 xl:grid-cols-3">
+            <div className="space-y-8 grid md:grid-cols-2 md:gap-x-2 xl:grid-cols-3">
               {dentists.map((dentist) => (
                 <VipCart key={dentist.userId}>
                   <a href={`/dentist/${dentist.userId}`}>
@@ -269,7 +269,7 @@ export default function AllDentist() {
                     </div>
 
                     {/* بخش پایینی کارت */}
-                    <div className="relative -bottom-6 bg-blue-50 h-14 p-4">
+                    <div className="bg-blue-50 h-16 p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-x-2">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4 fill-gray-400">
