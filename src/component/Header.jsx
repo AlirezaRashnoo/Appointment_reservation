@@ -1,10 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Button from "./Button";
 import { useState } from "react";
 import MenuLink from "./MenuLink";
 import { IoCloseOutline } from "react-icons/io5";
 import { useUserStore } from "@/stores/useUserStore";
-import { getDashboardPath } from "@/utils/routeHelpers"; // مسیر را اصلاح کن متناسب با ساختار پروژه
+import getDashboardPath from "@/utils/routeHelpers";
 import { FiUser } from "react-icons/fi";
 import { MdLogin } from "react-icons/md";
 import { FaRegUser } from "react-icons/fa6";
@@ -13,13 +13,16 @@ import { IoMdBook } from "react-icons/io";
 import { FcAdvertising } from "react-icons/fc";
 
 
+
 function Header() {
     const [isShowSearchBox,setIsShowSearchBox] = useState(false)
     const [isShowMenu, setIsShowMenu] = useState(false)
-    const profile = useUserStore((state) => state.profile);
+    const profile = useUserStore((state) => state.user);
+   
 
 
-    const dashboardLink =  profile?.status=="active" ? getDashboardPath(profile.role) : "/login";
+
+    const dashboardLink =  profile?.status=="active" ? getDashboardPath(profile?.role) : "/login";
 
     const isDentist = profile?.role === "dentist";
     const isActived = profile?.status === "active";
@@ -40,6 +43,9 @@ function Header() {
         : "/registerdentist";
       
       const label = isDentist && isActived ? "تبلیغات" : "ثبت دندان پزشکان";
+
+
+    
 
     return (
         <>
@@ -167,6 +173,7 @@ function Header() {
                                     )}
 
                                 </Button>
+
                             )}
                         </div>
                     </div>
