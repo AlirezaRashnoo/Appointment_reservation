@@ -1,94 +1,99 @@
 // import { create } from "zustand";
 
-
-// export const useUserStore = create((set) => ({
-//     profile: null,
-//     setProfile: (profile) => set({ profile }),
-//     clearProfile: () => set({ profile: null }),
-  
-//     isLoggedIn: () => !!useUserStore.getState().profile,
-//     isAdmin: () => useUserStore.getState().profile?.role === 'admin',
-//     isDentist: () => useUserStore.getState().profile?.role === 'dentist',
-//   }));
-
-  
-
-
-
-// -----------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-// import { create } from "zustand";
-// import Cookies from 'js-cookie';
-
-// export const useUserStore = create((set) => ({
-//   profile: null,  // فقط پروفایل ذخیره می‌شود (توکن‌ها در کوکی‌ها ذخیره می‌شوند)
-
-//   // برای تنظیم پروفایل کاربر
-//   setProfile: (profile) => {
-//     set({ profile }); // فقط پروفایل ذخیره می‌شود
-//     // توکن‌ها در کوکی‌ها ذخیره می‌شوند
-//     Cookies.set('access_token', profile.access_token, { secure: true, httpOnly: true, expires: 7 });
-//     Cookies.set('csrf_token', profile.csrf_token, { secure: true, httpOnly: true, expires: 7 });
-//     Cookies.set('refresh_token', profile.refresh_token, { secure: true, httpOnly: true, expires: 7 });
-//   },
-
-//   // برای پاک کردن پروفایل
-//   clearProfile: () => {
-//     set({ profile: null });
-//     // حذف توکن‌ها از کوکی‌ها
-//     Cookies.remove('access_token');
-//     Cookies.remove('csrf_token');
-//     Cookies.remove('refresh_token');
-//   },
-
-//   // متد برای بررسی وضعیت ورود کاربر
-//   isLoggedIn: () => !!useUserStore.getState().profile,
-
-//   // متد برای چک کردن نقش کاربر
-//   isAdmin: () => useUserStore.getState().profile?.role === 'admin',
-//   isDentist: () => useUserStore.getState().profile?.role === 'dentist',
-// }));
-
-// // متد برای دریافت توکن‌ها از کوکی‌ها
-// export const getToken = () => {
-//   const access_token = Cookies.get('access_token');
-//   const csrf_token = Cookies.get('csrf_token');
-//   const refresh_token = Cookies.get('refresh_token');
-//   return { access_token, csrf_token, refresh_token };
-// };
-
-
-
-
-
-
-
-
-
-// import { create } from "zustand";
-
 // export const useUserStore = create((set, get) => ({
-//   profile: null,
+//   // ------------------------
+//   // state
+//   // ------------------------
+//   user: null,        // اطلاعات پایه کاربر (/users/me)
+//   profile: null,     // پروفایل اختصاصی (فقط برای دندانپزشک)
 
-//   setProfile: (profile) => set({ profile }),
+//   // ------------------------
+//   // setters
+//   // ------------------------
+//   setUser: (user) => {
+//     set({ user });
+//   },
 
-//   clearProfile: () => set({ profile: null }),
+//   setProfile: (profile) => {
+//     set({ profile });
+//   },
 
-//   isLoggedIn: () => !!get().profile,
+//   // ------------------------
+//   // hydrate کامل (مهم‌ترین بخش)
+//   // ------------------------
+//   setAuthData: (userResponse, profileResponse = null) => {
+//     set({
+//       user: userResponse?.data ?? null,
+//       profile: profileResponse?.data ?? null,
+//     });
 
-//   isAdmin: () => get().profile?.role === 'admin',
-//   isDentist: () => get().profile?.role === 'dentist',
+//     console.log("📦 Auth hydrated:", {
+//       user: userResponse?.data,
+//       profile: profileResponse?.data,
+//     });
+//   },
+
+//   // ------------------------
+//   // clear
+//   // ------------------------
+//   clear: () => {
+//     set({ user: null, profile: null });
+//     console.log("🗑️ Auth cleared");
+//   },
+
+//   // ------------------------
+//   // computed
+//   // ------------------------
+//   isLoggedIn: () => !!get().user,
+
+//   role: () => get().user?.role,
+
+//   isAdmin: () => get().user?.role === "admin",
+//   isDentist: () => get().user?.role === "dentist",
+//   isPatient: () => get().user?.role === "patient",
+
+//   hasProfile: () => !!get().profile,
+  
+//   isProfileComplete: () => {
+//     const user = get().user;
+//     const profile = get().profile;
+    
+//     if (user?.role === 'dentist') {
+//       // بررسی کامل بودن پروفایل دندانپزشک
+//       return !!(profile && profile.medicalCouncilNumber);
+//     }
+    
+//     return true; // برای بیمارها نیاز به پروفایل خاصی نیست
+//   },
+
+//   // ------------------------
+//   // safe getters
+//   // ------------------------
+//   getDentistProfile: () => {
+//     const profile = get().profile;
+//     const user = get().user;
+    
+//     if (!profile || user?.role !== "dentist") return null;
+
+//     return {
+//       userId: profile.userId,
+//       medicalCouncilNumber: profile.medicalCouncilNumber,
+//       birthDateShamsi: profile.birthDateShamsi,
+//       yearsOfExperience: profile.yearsOfExperience,
+//       specialization: profile.specialization,
+//       degree: profile.degree,
+//       portfolio: profile.portfolio,
+//       additionalPhoneNumbers: profile.additionalPhoneNumbers,
+//       address: profile.address,
+//       rating: {
+//         count: profile.ratingCount,
+//         avg: profile.averageRating,
+//       },
+//     };
+//   },
 // }));
+
+
 
 
 
@@ -99,21 +104,101 @@
 import { create } from "zustand";
 
 export const useUserStore = create((set, get) => ({
+  // ------------------------
+  // state
+  // ------------------------
+  user: null,
   profile: null,
+  csrfToken: null, // 👈 اضافه شد
+
+  // ------------------------
+  // setters
+  // ------------------------
+  setUser: (user) => {
+    set({ user });
+  },
 
   setProfile: (profile) => {
     set({ profile });
-    console.log('📦 store به‌روزرسانی شد:', profile);
   },
 
-  clearProfile: () => {
-    set({ profile: null });
-    console.log('🗑️ store پاک شد');
+  setCsrfToken: (token) => {
+    set({ csrfToken: token });
+    console.log("🔐 CSRF Token saved:", token);
   },
 
-  isLoggedIn: () => !!get().profile,
+  // ------------------------
+  // hydrate کامل
+  // ------------------------
+  setAuthData: (userResponse, profileResponse = null) => {
+    set({
+      user: userResponse?.data ?? null,
+      profile: profileResponse?.data ?? null,
+    });
 
-  isAdmin: () => get().profile?.role === 'admin',
-  
-  isDentist: () => get().profile?.role === 'dentist',
+    console.log("📦 Auth hydrated:", {
+      user: userResponse?.data,
+      profile: profileResponse?.data,
+    });
+  },
+
+  // ------------------------
+  // clear
+  // ------------------------
+  clear: () => {
+    set({
+      user: null,
+      profile: null,
+      csrfToken: null, // 👈 پاک شدن هنگام logout
+    });
+
+    console.log("🗑️ Auth cleared");
+  },
+
+  // ------------------------
+  // computed
+  // ------------------------
+  isLoggedIn: () => !!get().user,
+
+  role: () => get().user?.role,
+
+  isAdmin: () => get().user?.role === "admin",
+  isDentist: () => get().user?.role === "dentist",
+  isPatient: () => get().user?.role === "patient",
+
+  hasProfile: () => !!get().profile,
+
+  isProfileComplete: () => {
+    const user = get().user;
+    const profile = get().profile;
+
+    if (user?.role === "dentist") {
+      return !!(profile && profile.medicalCouncilNumber);
+    }
+
+    return true;
+  },
+
+  getDentistProfile: () => {
+    const profile = get().profile;
+    const user = get().user;
+
+    if (!profile || user?.role !== "dentist") return null;
+
+    return {
+      userId: profile.userId,
+      medicalCouncilNumber: profile.medicalCouncilNumber,
+      birthDateShamsi: profile.birthDateShamsi,
+      yearsOfExperience: profile.yearsOfExperience,
+      specialization: profile.specialization,
+      degree: profile.degree,
+      portfolio: profile.portfolio,
+      additionalPhoneNumbers: profile.additionalPhoneNumbers,
+      address: profile.address,
+      rating: {
+        count: profile.ratingCount,
+        avg: profile.averageRating,
+      },
+    };
+  },
 }));
