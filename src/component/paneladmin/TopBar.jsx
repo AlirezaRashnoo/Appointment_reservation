@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { IoNotificationsCircleOutline } from "react-icons/io5";
 import { useUserStore } from "@/stores/useUserStore";
 import { FaCircleUser } from "react-icons/fa6";
@@ -7,7 +7,9 @@ import { FaCircleUser } from "react-icons/fa6";
 
 function TopBar() {
 
-    const userInfo = useUserStore((state) => state.profile);
+    const profile = useUserStore((state) => state.user);
+
+    
     
 
 
@@ -21,12 +23,12 @@ function TopBar() {
                 </div>
                 <div className="flex items-center gap-x-3">
                     <p>
-                        {userInfo?.profile.firstName} خوش آمدید!
+                        {profile?.profile?.fullName} خوش آمدید!
                         {/* خوش آمدید */}
                     </p>
-                    {userInfo?.avatar_url?
+                    {profile?.profile?.avatar_url?
                     (
-                        <img src={userInfo.avatar_url} alt="img100" className="size-10 rounded-full cursor-pointer ml-2"/>
+                        <img src={profile?.profile?.avatar_url} alt="img100" className="size-10 rounded-full cursor-pointer ml-2"/>
                     ):(
                         <FaCircleUser className="size-10 fill-gray-500"/>
                     )
