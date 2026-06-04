@@ -8,25 +8,21 @@ import { ClipLoader } from 'react-spinners';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
-// ایجاد یک نمونه از axios با تنظیمات پیش‌فرض
 const api = axios.create({
   baseURL: 'https://dentist-reyn.onrender.com/api/v1',
   withCredentials: true,
 });
 
-// Interceptor برای مدیریت خطای 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       console.log('❌ Authentication failed, redirecting to login');
-      // window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-// تابع دریافت پروفایل کاربر
 const fetchUserProfile = async () => {
   console.log('🔍 Fetching user profile');
   
@@ -63,7 +59,6 @@ function App() {
     refetchOnWindowFocus: false,
   });
 
-  // ذخیره داده‌ها در store وقتی دریافت شدن
   useEffect(() => {
     if (data) {
       console.log('✅ Saving user to store:', data);
@@ -75,7 +70,6 @@ function App() {
     }
   }, [data, error, isSuccess, setUser, clear]);
 
-  // لاگ گرفتن از store برای دیباگ
   useEffect(() => {
     if (user) {
       console.log('👤 Current user in store:', {
@@ -89,7 +83,6 @@ function App() {
         avatar: user.profile?.avatar,
       });
     }
-    // console.log(document.cookie)
     
 
   }, [user]);
