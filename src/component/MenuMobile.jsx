@@ -3,7 +3,8 @@ import Button from "./Button";
 import { IoMdBook } from "react-icons/io";
 import { FcAdvertising } from "react-icons/fc";
 import { useUserStore } from "@/stores/useUserStore";
-import { getDashboardPath } from "@/utils/routeHelpers"; // مسیر را اصلاح کن متناسب با ساختار پروژه
+// import { getDashboardPath, dashboardPaths } from "@/utils/routeHelpers"; // مسیر را اصلاح کن متناسب با ساختار پروژه
+import getDashboardPath from "@/utils/routeHelpers";
 import { FiUser } from "react-icons/fi";
 import { MdLogin } from "react-icons/md";
 import { FaRegUser } from "react-icons/fa6";
