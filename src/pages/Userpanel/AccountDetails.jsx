@@ -28,8 +28,12 @@ const schema = z.object({
 function AccountDetails() {
   const queryClient = useQueryClient();
   const { user, setUser } = useUserStore();
+  // const user = useUserStore((state) => state.user);
+  
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const csrfToken = Cookies.get("csrf_token")
+
 
   const {
     register,
@@ -50,6 +54,9 @@ function AccountDetails() {
 
   // پر کردن فرم از store
   useEffect(() => {
+    console.log(csrfToken);
+    console.log(user?.profile?.avatar,"یبتردیبخکرخیب");
+    
     if (!user) return;
     reset({
       firstName: user.profile?.firstName || "",
@@ -63,7 +70,6 @@ function AccountDetails() {
   // ویرایش پروفایل
   const mutation = useMutation({
     mutationFn: async (updatedData) => {
-      const csrfToken = Cookies.get("csrf_token")
       console.log("CSRF token sent:", csrfToken); // بررسی در console
 
       const response = await fetch(`${API_BASE_URL}/users/me`, {
@@ -256,7 +262,7 @@ function AccountDetails() {
               <div className="sm:col-span-2">
                 <label>عکس پروفایل</label>
                 <div className="flex gap-4 mt-2">
-                  {user.profile?.avatar && (
+                  {user?.profile?.avatar && (
                     <img
                       src={user.profile.avatar}
                       alt="profile"
