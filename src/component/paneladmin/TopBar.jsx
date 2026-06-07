@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { IoNotificationsCircleOutline } from "react-icons/io5";
 import { useUserStore } from "@/stores/useUserStore";
 import { FaCircleUser } from "react-icons/fa6";
-
+import { IoMdNotificationsOutline } from "react-icons/io";
 
 
 function TopBar() {
@@ -19,7 +19,7 @@ function TopBar() {
             <div className="flex justify-between items-center h-full px-3">
                 <div className="flex items-center gap-x-3">
                     <input type="text" className="w-48 h-7 px-2 outline-none bg-blue-100 rounded-md text-xs" placeholder="جستجو..."/>
-                    آیکن زنگوله
+                   <IoMdNotificationsOutline className="size-6"/>
                 </div>
                 <div className="flex items-center gap-x-3">
                     <p>
