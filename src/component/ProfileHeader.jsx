@@ -1,19 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Button from "./Button";
 import MenuLink from "./MenuLink";
 import { useUserStore } from "@/stores/useUserStore";
 import { useNavigate } from "react-router-dom";
+import { useLogout } from "@/hooks/useLogout";
 
 function ProfileHeader({children}) {
   const [isShowMenu, setIsShowMenu] = useState(false);
-  const user = useUserStore((state) => state.profile);
-  const clearProfile = useUserStore((state) => state.clearProfile);
+  const user = useUserStore((state) => state.user);
   const navigate = useNavigate();
 
+
+  const logout = useLogout();
 
   if (!user) return null;
 
 
+
+  // <
   // const handleLogout = async () => {
   //   try {
   //     const { error } = await supabase.auth.signOut();
@@ -53,7 +57,7 @@ function ProfileHeader({children}) {
         </Button>
 
         {/* Logout Button */}
-        <Button className="flex items-center gap-x-2 text-red-500">
+        <Button className="flex items-center gap-x-2 text-red-500" onClick={logout}>
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -104,22 +108,11 @@ function ProfileHeader({children}) {
           </div>
 
           {/* Name */}
-          {user?.role=="dentist"?
-            (
-              <>
-                <p className="mb-2 text-[17px] font-semibold">{user?.profile?.fullName || "بدون نام"}</p>
-                <p className="mb-2 text-sm">{user?.profile?.phoneNumber || "شماره‌ای وارد نشده"}</p>
-              </>
-
-            
-            ):(
-              <>
-                <p className="mb-2 text-[17px] font-semibold">{user?.fullName || "بدون نام"}</p>
-                <p className="mb-2 text-sm">{user?.phone || "شماره‌ای وارد نشده"}</p>
-              </>
-            )
-
-          }
+          <div>
+            <p className="mb-2 text-[17px] font-semibold">{user?.profile?.fullName || "بدون نام"}</p>
+            <p className="mb-2 text-sm">{user?.phoneNumber || "شماره‌ای وارد نشده"}</p>
+          </div>
+          
 
         </div>
 
