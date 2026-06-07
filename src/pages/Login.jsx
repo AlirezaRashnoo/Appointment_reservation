@@ -102,11 +102,13 @@ onSuccess: (data) => {
     setCsrfToken(csrfToken);
 
     // ذخیره در کوکی
-    Cookies.set("csrf_token", csrfToken, {
-      expires: 1, // 1 روز اعتبار
-      secure: true, // فقط https
-      sameSite: "Strict", // جلوگیری از CSRF
-    });
+    // Cookies.set("csrf_token", csrfToken, {
+    //   expires: 1, // 1 روز اعتبار
+    //   secure: true, // فقط https
+    //   sameSite: "Strict", // جلوگیری از CSRF
+    // });
+    Cookies.set('csrf_token', csrfToken, { path: '/', expires: 1/24 });
+
   }
 
   Swal.fire({
@@ -188,7 +190,6 @@ onSuccess: (data) => {
               </p>
             )}
           </div>
-
           <button
             type="submit"
             disabled={mutation.isPending}
