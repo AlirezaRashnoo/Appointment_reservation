@@ -3,6 +3,7 @@ import MenuLink from "../MenuLink";
 import { useNavigate } from "react-router-dom";
 import { useUserStore } from "@/stores/useUserStore";
 import Button from "../Button";
+import { useLogout } from "@/hooks/useLogout";
 // import supabase from "@/api/supabase";
 function SidBar() {
 
@@ -10,19 +11,20 @@ function SidBar() {
     // const clearProfile = useUserStore((state) => state.clearProfile);
 
     const navigate = useNavigate();
+    const logout = useLogout();
 
-    const handleLogout = async () => {
-        try {
-          const { error } = await supabase.auth.signOut();
-          if (error) throw error;
+    // const handleLogout = async () => {
+    //     try {
+    //       const { error } = await supabase.auth.signOut();
+    //       if (error) throw error;
     
-          clearProfile(); 
-          navigate("/"); 
-        } catch (err) {
-          console.error("خطا در خروج از حساب:", err.message);
-          alert("مشکلی در خروج از حساب رخ داد");
-        }
-      };
+    //       clearProfile(); 
+    //       navigate("/"); 
+    //     } catch (err) {
+    //       console.error("خطا در خروج از حساب:", err.message);
+    //       alert("مشکلی در خروج از حساب رخ داد");
+    //     }
+    //   };
 
     return ( 
         <>
@@ -82,7 +84,7 @@ function SidBar() {
                         </svg>
                     تبلیغات دندان پزشک
                     </MenuLink>
-                    <Button type="button" className="flex items-center gap-x-3">
+                    <Button type="button" className="flex items-center gap-x-3" onClick={logout}>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
                         </svg>
