@@ -1,520 +1,3 @@
-// import React, { useEffect, useState } from "react";
-// import { useForm } from "react-hook-form";
-// import { zodResolver } from "@hookform/resolvers/zod";
-// import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-// import { z } from "zod";
-// import { useParams } from "react-router-dom";
-// import apiService from "@/features/api";
-
-// const createSchema = (userRole) => {
-//   const baseSchema = {
-//     // فیلدهای اصلی کاربر
-//     phoneNumber: z.string().optional(),
-//     role: z.string().optional(),
-//     status: z.string().optional(),
-    
-//     // فیلدهای پروفایل
-//     email: z.string().email("ایمیل معتبر نیست").optional(),
-//     firstName: z.string().min(2, "نام باید حداقل ۲ کاراکتر باشد").optional(),
-//     lastName: z.string().min(2, "نام خانوادگی باید حداقل ۲ کاراکتر باشد").optional(),
-//     fullName: z.string().min(2, "نام و نام خانوادگی باید حداقل ۲ کاراکتر باشد").optional(),
-//     bio: z.string().optional(),
-//     avatar: z.string().optional(),
-    
-//     // فیلدهای اضافی برای پروفایل
-//     birthDate: z.string().optional(),
-//     nationalCode: z.string().optional(),
-//     address: z.string().optional(),
-//     longAddress: z.string().max(500, "حداکثر ۵۰۰ کاراکتر مجاز است.").optional(),
-//     education: z.array(z.string()).optional(),
-//     services: z.array(z.string()).optional(),
-//     phoneNumbers: z.array(z.string().regex(/^09\d{9}$/, "شماره معتبر نیست")).max(2, "حداکثر دو شماره مجاز است").optional(),
-//   };
-
-//   // فیلدهای مخصوص دندانپزشک
-//   if (userRole === 'dentist') {
-//     baseSchema.medicalCode = z.string().min(1, "کد نظام پزشکی الزامی است").optional();
-//     baseSchema.specialty = z.string().min(1, "تخصص الزامی است").optional();
-//     baseSchema.experience = z.string().optional();
-//   }
-
-//   // فیلدهای مخصوص بیمار
-//   if (userRole === 'patient') {
-//     baseSchema.bloodType = z.string().optional();
-//     baseSchema.allergies = z.string().optional();
-//     baseSchema.medicalHistory = z.string().optional();
-//   }
-
-//   return z.object(baseSchema);
-// };
-
-// // تابع دریافت اطلاعات کاربر از API
-// const fetchUserById = async (userId) => {
-//   try {
-//     const response = await apiService.get(`/users/${userId}`);
-    
-//     if (response.data && response.data.data) {
-//       // ساختار: { message, code, timestamp, path, data: { user fields + profile } }
-//       return response.data.data;
-//     }
-    
-//     return null;
-//   } catch (error) {
-//     console.error('Error fetching user:', error);
-//     throw new Error(error.response?.data?.message || 'خطا در دریافت اطلاعات کاربر');
-//   }
-// };
-
-// // تابع به‌روزرسانی کاربر از طریق API
-// const updateUser = async ({ userId, userData }) => {
-//   try {
-//     // تشخیص اینکه داده‌ها مربوط به کاربر اصلی هستند یا پروفایل
-//     const userMainFields = ['phoneNumber', 'role', 'status'];
-//     const profileFields = ['email', 'firstName', 'lastName', 'fullName', 'bio', 'avatar', 
-//       'birthDate', 'nationalCode', 'address', 'longAddress', 'education', 'services', 
-//       'phoneNumbers', 'medicalCode', 'specialty', 'experience', 'bloodType', 'allergies', 
-//       'medicalHistory'];
-    
-//     const userMainData = {};
-//     const profileData = {};
-    
-//     Object.keys(userData).forEach(key => {
-//       if (userMainFields.includes(key)) {
-//         userMainData[key] = userData[key];
-//       } else if (profileFields.includes(key)) {
-//         profileData[key] = userData[key];
-//       }
-//     });
-    
-//     // ارسال به API مناسب
-//     let response;
-    
-//     if (Object.keys(profileData).length > 0) {
-//       // آپدیت پروفایل
-//       response = await apiService.patch(`/users/${userId}/profile`, profileData);
-//     } else {
-//       // آپدیت اطلاعات اصلی کاربر
-//       response = await apiService.patch(`/users/${userId}`, userMainData);
-//     }
-    
-//     return response.data;
-//   } catch (error) {
-//     console.error('Error updating user:', error);
-//     throw new Error(error.response?.data?.message || 'خطا در بروزرسانی اطلاعات کاربر');
-//   }
-// };
-
-// export default function ProfilePatients() {
-//   const { id } = useParams();
-//   const queryClient = useQueryClient();
-//   const [uploading, setUploading] = useState(false);
-//   const [uploadError, setUploadError] = useState("");
-//   const [activeTab, setActiveTab] = useState("education");
-//   const [userRole, setUserRole] = useState('dentist');
-
-//   // دریافت اطلاعات کاربر از API
-//   const { data: userData, isLoading, error } = useQuery({
-//     queryKey: ["user", id],
-//     queryFn: () => fetchUserById(id),
-//     enabled: !!id,
-//   });
-
-//   // استخراج اطلاعات کاربر و پروفایل
-//   const user = userData || {};
-//   const profile = user.profile || {};
-
-//   // تنظیم نوع کاربر وقتی داده‌ها لود شدند
-//   useEffect(() => {
-//     if (user?.role) {
-//       setUserRole(user.role);
-//     }
-//   }, [user]);
-
-//   // ایجاد schema داینامیک
-//   const schema = createSchema(userRole);
-
-//   // mutation برای آپدیت کاربر
-//   const mutation = useMutation({
-//     mutationFn: (updatedData) => updateUser({ userId: id, userData: updatedData }),
-//     onSuccess: () => {
-//       queryClient.invalidateQueries({ queryKey: ["user", id] });
-//       alert("اطلاعات با موفقیت بروزرسانی شد");
-//     },
-//     onError: (error) => alert(`خطا در بروزرسانی: ${error.message}`),
-//   });
-
-//   const {
-//     register,
-//     handleSubmit,
-//     formState: { errors, isSubmitting },
-//     reset,
-//     setValue,
-//     watch,
-//   } = useForm({
-//     resolver: zodResolver(schema),
-//     defaultValues: {
-//       education: [],
-//       services: [],
-//       phoneNumbers: [],
-//     }
-//   });
-
-//   // ریست فرم وقتی کاربر لود شد
-//   useEffect(() => {
-//     if (user) {
-//       // ترکیب اطلاعات کاربر اصلی و پروفایل
-//       const formData = {
-//         // اطلاعات اصلی کاربر
-//         phoneNumber: user.phoneNumber || '',
-//         role: user.role || '',
-//         status: user.status || '',
-        
-//         // اطلاعات پروفایل
-//         email: profile.email || '',
-//         firstName: profile.firstName || '',
-//         lastName: profile.lastName || '',
-//         fullName: profile.fullName || '',
-//         bio: profile.bio || '',
-//         avatar: profile.avatar || '',
-        
-//         // فیلدهای اضافی (با مقادیر پیش‌فرض)
-//         birthDate: '',
-//         nationalCode: '',
-//         address: '',
-//         longAddress: '',
-//         education: [],
-//         services: [],
-//         phoneNumbers: [],
-//         medicalCode: '',
-//         specialty: '',
-//         experience: '',
-//         bloodType: '',
-//         allergies: '',
-//         medicalHistory: '',
-//       };
-      
-//       // اگر profile فیلدهای اضافی دارد، آنها را هم اضافه کن
-//       if (profile.additionalData) {
-//         Object.assign(formData, profile.additionalData);
-//       }
-      
-//       reset(formData);
-//     }
-//   }, [user, profile, reset]);
-
-//   const education = watch("education") || [];
-//   const services = watch("services") || [];
-//   const phoneNumbers = watch("phoneNumbers") || [];
-
-//   // آپلود آواتار
-//   const uploadAvatar = async (file) => {
-//     try {
-//       if (!id) {
-//         setUploadError("شناسه کاربر موجود نیست");
-//         return;
-//       }
-
-//       setUploading(true);
-//       setUploadError("");
-
-//       if (!file) throw new Error("فایل انتخاب نشده");
-
-//       const formData = new FormData();
-//       formData.append('avatar', file);
-      
-//       const response = await apiService.post(`/users/${id}/profile/avatar`, formData, {
-//         headers: {
-//           'Content-Type': 'multipart/form-data',
-//         },
-//       });
-
-//       if (response.data && response.data.data && response.data.data.avatarUrl) {
-//         setValue("avatar", response.data.data.avatarUrl);
-//         alert("آپلود عکس با موفقیت انجام شد");
-        
-//         // به‌روزرسانی کش
-//         queryClient.invalidateQueries({ queryKey: ["user", id] });
-//       }
-//     } catch (error) {
-//       setUploadError(error.response?.data?.message || "خطا در آپلود عکس");
-//     } finally {
-//       setUploading(false);
-//     }
-//   };
-
-//   const onSubmit = (formData) => {
-//     // حذف فیلدهای خالی و تکراری
-//     const cleanData = Object.fromEntries(
-//       Object.entries(formData).filter(([_, v]) => v != null && v !== '')
-//     );
-    
-//     mutation.mutate(cleanData);
-//   };
-
-//   // توابع مدیریت فیلدهای داینامیک
-//   const addField = (key) => {
-//     const current = watch(key) || [];
-//     setValue(key, [...current, ""]);
-//   };
-
-//   const updateField = (key, index, value) => {
-//     const current = [...(watch(key) || [])];
-//     current[index] = value;
-//     setValue(key, current);
-//   };
-
-//   const removeField = (key, index) => {
-//     const current = [...(watch(key) || [])];
-//     current.splice(index, 1);
-//     setValue(key, current);
-//   };
-
-//   if (isLoading) return <p className="text-center py-8">در حال بارگذاری اطلاعات...</p>;
-//   if (error) return <p className="text-red-500 text-center py-8">خطا در بارگذاری پروفایل: {error.message}</p>;
-//   if (!user) return <p className="text-center py-8">کاربر یافت نشد</p>;
-
-//   return (
-//     <div className="pb-16 bg-blue-50 min-h-screen">
-//       <div className="container mx-auto max-w-4xl px-4">
-//         {/* Header */}
-//         <div className="flex items-center gap-x-3 pt-10">
-//           <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" className="size-7 text-blue-600" viewBox="0 0 24 24">
-//             <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
-//           </svg>
-//           <h4 className="text-lg font-semibold text-gray-800">
-//             ویرایش اطلاعات {userRole}
-//           </h4>
-//           <span className={`badge ${userRole === 'dentist' ? 'badge-info' : 'badge-success'} mr-2`}>
-//             {userRole}
-//           </span>
-          
-//           {/* نمایش وضعیت */}
-//           <span className={`badge ${user.status === 'active' ? 'badge-success' : user.status === 'pending' ? 'badge-warning' : 'badge-error'}`}>
-//             {user.status === 'active' ? 'فعال' : user.status === 'pending' ? 'در انتظار تایید' : 'غیرفعال'}
-//           </span>
-//         </div>
-
-//         {/* Form Container */}
-//         <div className="bg-white shadow-md p-6 rounded-xl mt-6">
-//           <form onSubmit={handleSubmit(onSubmit)}>
-//             <div className="grid sm:grid-cols-2 gap-6">
-//               {/* First Name */}
-//               <div>
-//                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">نام</label>
-//                 <input {...register("firstName")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-//                 {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>}
-//               </div>
-
-//               {/* Last Name */}
-//               <div>
-//                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">نام خانوادگی</label>
-//                 <input {...register("lastName")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-//                 {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>}
-//               </div>
-
-//               {/* Phone */}
-//               <div>
-//                 <label className="block text-sm font-medium text-gray-700">شماره موبایل</label>
-//                 <input className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 bg-gray-100 focus:outline-none cursor-not-allowed" 
-//                   value={user?.phoneNumber || ''} 
-//                   readOnly 
-//                   disabled
-//                 />
-//               </div>
-
-//               {/* Email */}
-//               <div>
-//                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">ایمیل</label>
-//                 <input {...register("email")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50" />
-//                 {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
-//               </div>
-
-//               {/* BirthDate */}
-//               <div>
-//                 <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700">تاریخ تولد</label>
-//                 <input type="date" {...register("birthDate")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-//               </div>
-
-//               {/* National Code */}
-//               <div>
-//                 <label htmlFor="nationalCode" className="block text-sm font-medium text-gray-700">کد ملی</label>
-//                 <input {...register("nationalCode")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-//               </div>
-
-//               {/* فیلدهای مخصوص دندانپزشک */}
-//               {userRole === 'dentist' && (
-//                 <>
-//                   <div>
-//                     <label htmlFor="medicalCode" className="block text-sm font-medium text-gray-700">کد نظام پزشکی</label>
-//                     <input {...register("medicalCode")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-//                     {errors.medicalCode && <p className="text-red-500 text-sm mt-1">{errors.medicalCode.message}</p>}
-//                   </div>
-//                   <div>
-//                     <label htmlFor="specialty" className="block text-sm font-medium text-gray-700">تخصص</label>
-//                     <input {...register("specialty")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-//                     {errors.specialty && <p className="text-red-500 text-sm mt-1">{errors.specialty.message}</p>}
-//                   </div>
-//                   <div>
-//                     <label htmlFor="experience" className="block text-sm font-medium text-gray-700">سابقه کار (سال)</label>
-//                     <input {...register("experience")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-//                   </div>
-//                   <div>
-//                     <label htmlFor="address" className="block text-sm font-medium text-gray-700">آدرس</label>
-//                     <input {...register("address")} className="w-full mt-1 p-2.5 rounded-md text-sm border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300" />
-//                   </div>
-//                 </>
-//               )}
-
-//               {/* Upload Image */}
-//               <div className="space-y-3 col-span-2 sm:col-span-1">
-//                 <p className="text-sm font-medium text-gray-700">عکس پروفایل</p>
-//                 <div className="flex items-center gap-4">
-//                   {watch('avatar') || profile.avatar ? (
-//                     <div className="size-[90px] overflow-hidden border border-gray-200 rounded-full">
-//                       <img 
-//                         src={watch('avatar') || profile.avatar} 
-//                         className="size-full object-cover" 
-//                         alt="profile_img" 
-//                       />
-//                     </div>
-//                   ) : (
-//                     <div className="w-[90px] h-[90px] rounded-full bg-gray-200 flex items-center justify-center">
-//                       <span className="text-gray-500 text-xs text-center">بدون عکس</span>
-//                     </div>
-//                   )}
-//                   <div className="flex-1">
-//                     <label className="block text-sm font-medium text-gray-700 mb-1">تغییر تصویر</label>
-//                     <input
-//                       type="file"
-//                       accept="image/*"
-//                       onChange={(e) => {
-//                         const file = e.target.files?.[0];
-//                         if (file) uploadAvatar(file);
-//                       }}
-//                       className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
-//                     />
-//                     {uploading && <p className="text-blue-500 text-sm mt-1">در حال آپلود...</p>}
-//                     {uploadError && <p className="text-red-500 text-sm mt-1">{uploadError}</p>}
-//                   </div>
-//                 </div>
-//               </div>
-
-//               {/* Bio */}
-//               <div className="sm:col-span-2">
-//                 <label htmlFor="bio" className="block text-sm font-medium text-gray-700">درباره من</label>
-//                 <textarea
-//                   {...register("bio")}
-//                   rows={5}
-//                   className="mt-1 w-full p-2.5 rounded-md text-sm border border-gray-300 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
-//                 />
-//               </div>
-//             </div>
-
-//             {/* تب‌های داینامیک - فقط برای دندانپزشک */}
-//             {userRole === "dentist" && (
-//               <>
-//                 <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-6 mb-4">
-//                   <TabButton label="سوابق تحصیلی" active={activeTab === "education"} onClick={() => setActiveTab("education")} />
-//                   <TabButton label="خدمات قابل ارائه" active={activeTab === "services"} onClick={() => setActiveTab("services")} />
-//                   <TabButton label="آدرس دقیق" active={activeTab === "longAddress"} onClick={() => setActiveTab("longAddress")} />
-//                   <TabButton label="شماره‌های تماس دیگر" active={activeTab === "phoneNumbers"} onClick={() => setActiveTab("phoneNumbers")} />
-//                 </div>
-
-//                 {activeTab === "education" && (
-//                   <FieldList title="سوابق تحصیلی" keyName="education" values={education} updateField={updateField} removeField={removeField} addField={addField} />
-//                 )}
-
-//                 {activeTab === "services" && (
-//                   <FieldList title="خدمات قابل ارائه" keyName="services" values={services} updateField={updateField} removeField={removeField} addField={addField} />
-//                 )}
-
-//                 {activeTab === "phoneNumbers" && (
-//                   <FieldList title="شماره‌های تماس دیگر" keyName="phoneNumbers" values={phoneNumbers} updateField={updateField} removeField={removeField} addField={addField} />
-//                 )}
-
-//                 {activeTab === "longAddress" && (
-//                   <div>
-//                     <label className="block text-blue-700 mb-2 font-medium">آدرس دقیق مطب</label>
-//                     <textarea {...register("longAddress")} rows={3} className="w-full px-3 py-2 border border-blue-200 rounded-md shadow-sm bg-white text-gray-800 placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-200" />
-//                     {errors.longAddress && <p className="text-red-500 text-sm mt-1">{errors.longAddress.message}</p>}
-//                   </div>
-//                 )}
-//               </>
-//             )}
-
-//             {/* Submit Button */}
-//             <div className="flex justify-end mt-8">
-//               <button
-//                 type="submit"
-//                 disabled={isSubmitting || uploading}
-//                 className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg text-sm shadow-md transition disabled:opacity-60"
-//               >
-//                 {isSubmitting || uploading ? "در حال ارسال..." : "ذخیره تغییرات"}
-//               </button>
-//             </div>
-//           </form>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// // کامپوننت‌های کمکی
-// function TabButton({ label, active, onClick }) {
-//   return (
-//     <button
-//       type="button"
-//       onClick={onClick}
-//       className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-sm sm:text-base font-medium transition-all duration-200 ${
-//         active
-//           ? "bg-blue-500 text-white shadow"
-//           : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-//       }`}
-//     >
-//       {label}
-//     </button>
-//   );
-// }
-
-// function FieldList({ title, keyName, values, updateField, removeField, addField }) {
-//   return (
-//     <div>
-//       <label className="block text-blue-700 mb-2 font-medium">{title}</label>
-//       {values.map((item, index) => (
-//         <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
-//           <input
-//             type="text"
-//             value={item}
-//             onChange={(e) => updateField(keyName, index, e.target.value)}
-//             className="w-full sm:flex-grow px-3 py-2 border border-blue-200 rounded-md shadow-sm bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all duration-200"
-//           />
-//           <button
-//             type="button"
-//             onClick={() => removeField(keyName, index)}
-//             className="text-red-500 hover:text-red-700 text-sm"
-//           >
-//             🗑️ حذف
-//           </button>
-//         </div>
-//       ))}
-//       <button
-//         type="button"
-//         onClick={() => addField(keyName)}
-//         className="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-//       >
-//         ➕ افزودن
-//       </button>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-// -------------------------------------------------------------------------------------------
-
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -523,129 +6,98 @@ import { z } from "zod";
 import { useParams, useNavigate } from "react-router-dom";
 import apiService from "@/features/api";
 import { toast } from "react-hot-toast";
-
+ 
 // ========== Schema اعتبارسنجی ==========
 const patientSchema = z.object({
-  // اطلاعات اصلی کاربر (غیرقابل ویرایش - نمایشی)
   phoneNumber: z.string().optional(),
   status: z.string().optional(),
-  
-  // اطلاعات پروفایل (قابل ویرایش)
+  role: z.string().optional(),
   email: z.string().email("ایمیل معتبر نیست").nullable().optional(),
   firstName: z.string().min(2, "نام باید حداقل ۲ کاراکتر باشد").nullable().optional(),
   lastName: z.string().min(2, "نام خانوادگی باید حداقل ۲ کاراکتر باشد").nullable().optional(),
   fullName: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
   avatar: z.string().nullable().optional(),
-  
-  // اطلاعات اضافی
-  birthDate: z.string().nullable().optional(),
-  nationalCode: z.string().length(10, "کد ملی باید ۱۰ رقم باشد").nullable().optional(),
-  address: z.string().nullable().optional(),
+  nationalCode: z.string().length(10, "کد ملی باید ۱۰ رقم باشد").nullable().optional().or(z.literal("")),
 });
-
+ 
 // ========== API Functions ==========
 const fetchPatientProfile = async (userId) => {
-  try {
-    const response = await apiService.get(`/users/${userId}`);
-    
-    if (response.data && response.data.data) {
-      return response.data.data;
-    }
-    
-    throw new Error('ساختار پاسخ نامعتبر است');
-  } catch (error) {
-    console.error('Error fetching patient profile:', error);
-    throw new Error(error.response?.data?.message || 'خطا در دریافت اطلاعات بیمار');
-  }
+  const response = await apiService.get(`/users/${userId}`);
+  if (response.data?.data) return response.data.data;
+  throw new Error("ساختار پاسخ نامعتبر است");
 };
-
-const updatePatientProfile = async ({ userId, profileData }) => {
-  try {
-    const response = await apiService.patch(`/users/${userId}/profile`, profileData);
-    
-    if (response.data) {
-      return response.data;
-    }
-    
-    throw new Error('خطا در بروزرسانی اطلاعات');
-  } catch (error) {
-    console.error('Error updating patient profile:', error);
-    throw new Error(error.response?.data?.message || 'خطا در بروزرسانی اطلاعات بیمار');
-  }
+ 
+const updatePatientProfile = async ({ userId, payload }) => {
+  const response = await apiService.patch(`/users/${userId}`, payload);
+  if (response.data) return response.data;
+  throw new Error("خطا در بروزرسانی اطلاعات");
 };
-
+ 
 const uploadAvatar = async ({ userId, file }) => {
-  try {
-    const formData = new FormData();
-    formData.append('avatar', file);
-    
-    const response = await apiService.post(`/users/${userId}/profile/avatar`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error('Error uploading avatar:', error);
-    throw new Error(error.response?.data?.message || 'خطا در آپلود عکس');
-  }
+  const formData = new FormData();
+  formData.append("avatar", file);
+  const response = await apiService.post(`/users/${userId}/profile/avatar`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
 };
-
+ 
+// ========== Status Config ==========
+const STATUS_CONFIG = {
+  active:   { label: "فعال",             dot: "bg-emerald-400", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+  pending:  { label: "در انتظار تایید",  dot: "bg-amber-400",   badge: "bg-amber-50 text-amber-700 ring-amber-200" },
+  inactive: { label: "غیرفعال",          dot: "bg-rose-400",    badge: "bg-rose-50 text-rose-700 ring-rose-200" },
+};
+ 
+// ========== Helpers ==========
+const getInitials = (first, last, phone) => {
+  if (first && last) return `${first[0]}${last[0]}`;
+  if (first) return first[0];
+  if (phone) return phone[0];
+  return "؟";
+};
+ 
 // ========== Main Component ==========
 export default function PatientProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
-  // State
-  const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
-
-  // ========== دریافت اطلاعات بیمار ==========
-  const { 
-    data: patientData, 
-    isLoading, 
+  const [uploading, setUploading] = useState(false);
+ 
+  const {
+    data: patientData,
+    isLoading,
     error,
-    refetch 
+    refetch,
   } = useQuery({
     queryKey: ["patient-profile", id],
     queryFn: () => fetchPatientProfile(id),
     enabled: !!id,
     retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 دقیقه
+    staleTime: 5 * 60 * 1000,
   });
-
-  // ========== Mutation برای بروزرسانی ==========
+ 
   const updateMutation = useMutation({
     mutationFn: updatePatientProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["patient-profile", id] });
-      toast.success('اطلاعات با موفقیت بروزرسانی شد');
+      toast.success("اطلاعات با موفقیت ذخیره شد");
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (err) => toast.error(err.message),
   });
-
-  // ========== Mutation برای آپلود عکس ==========
+ 
   const uploadMutation = useMutation({
     mutationFn: uploadAvatar,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["patient-profile", id] });
-      toast.success('عکس پروفایل با موفقیت آپلود شد');
-      
-      if (data.data?.avatarUrl) {
-        setValue('avatar', data.data.avatarUrl);
-      }
+      toast.success("تصویر پروفایل به‌روز شد");
+      if (data?.data?.avatarUrl) setValue("avatar", data.data.avatarUrl);
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (err) => toast.error(err.message),
   });
-
-  // ========== React Hook Form ==========
+ 
   const {
     register,
     handleSubmit,
@@ -655,414 +107,318 @@ export default function PatientProfile() {
     watch,
   } = useForm({
     resolver: zodResolver(patientSchema),
-    mode: 'onChange',
+    mode: "onChange",
   });
-
-  // ========== Watch for values ==========
-  const avatar = watch('avatar');
-
-  // ========== ریست فرم با داده‌های دریافتی ==========
+ 
+  const avatar = watch("avatar");
+ 
   useEffect(() => {
     if (patientData) {
-      const profile = patientData.profile || {};
-      
-      const formData = {
-        // اطلاعات اصلی کاربر
-        phoneNumber: patientData.phoneNumber || '',
-        status: patientData.status || '',
-        
-        // اطلاعات پروفایل
-        email: profile.email || '',
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        fullName: profile.fullName || '',
-        bio: profile.bio || '',
-        avatar: profile.avatar || '',
-        
-        // اطلاعات اضافی
-        birthDate: '',
-        nationalCode: '',
-        address: '',
-      };
-      
-      reset(formData);
+      const p = patientData.profile || {};
+      reset({
+        phoneNumber: patientData.phoneNumber || "",
+        status: patientData.status || "",
+        role: patientData.role || "",
+        email: p.email || "",
+        firstName: p.firstName || "",
+        lastName: p.lastName || "",
+        fullName: p.fullName || "",
+        bio: p.bio || "",
+        avatar: p.avatar || "",
+        nationalCode: p.nationalCode || "",
+      });
     }
   }, [patientData, reset]);
-
-  // ========== آپلود عکس ==========
-  const handleAvatarUpload = async (event) => {
-    const file = event.target.files?.[0];
+ 
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('لطفاً فقط تصویر انتخاب کنید');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) { // 5MB
-      toast.error('حجم تصویر نباید بیشتر از ۵ مگابایت باشد');
-      return;
-    }
-
+    if (!file.type.startsWith("image/")) return toast.error("فقط تصویر انتخاب کنید");
+    if (file.size > 5 * 1024 * 1024) return toast.error("حجم تصویر نباید بیشتر از ۵ مگابایت باشد");
     setUploading(true);
     try {
       await uploadMutation.mutateAsync({ userId: id, file });
     } finally {
       setUploading(false);
-      event.target.value = ''; // ریست input
+      e.target.value = "";
     }
   };
-
-  // ========== ارسال فرم ==========
+ 
   const onSubmit = (formData) => {
-    // فقط فیلدهای پروفایل رو ارسال کن
-    const profileData = {
-      email: formData.email || null,
-      firstName: formData.firstName || null,
-      lastName: formData.lastName || null,
-      fullName: formData.fullName || null,
-      bio: formData.bio || null,
-      avatar: formData.avatar || null,
+    // ساختار payload مطابق API
+    const payload = {
+      phoneNumber: formData.phoneNumber || undefined,
+      role: formData.role || undefined,
+      status: formData.status || undefined,
+      profile: {
+        email: formData.email || null,
+        firstName: formData.firstName || null,
+        lastName: formData.lastName || null,
+        fullName: formData.fullName || null,
+        bio: formData.bio || null,
+        avatar: formData.avatar || null,
+        nationalCode: formData.nationalCode || null,
+      },
     };
-    
-    // حذف فیلدهای خالی
-    const cleanData = Object.fromEntries(
-      Object.entries(profileData).filter(([_, v]) => v != null && v !== '')
-    );
-    
-    if (Object.keys(cleanData).length > 0) {
-      updateMutation.mutate({ userId: id, profileData: cleanData });
-    } else {
-      toast.error('هیچ داده‌ای برای بروزرسانی وارد نشده است');
-    }
+    updateMutation.mutate({ userId: id, payload });
   };
-
-  // ========== وضعیت‌های لودینگ ==========
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="bg-red-50 text-red-800 p-6 rounded-lg max-w-md text-center">
-          <h3 className="text-lg font-semibold mb-2">خطا در بارگذاری اطلاعات</h3>
-          <p className="mb-4">{error.message}</p>
-          <button 
-            onClick={() => refetch()}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-          >
-            تلاش مجدد
-          </button>
-          <button 
-            onClick={() => navigate('/admin-panel/users/patients')}
-            className="mr-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
-          >
-            بازگشت به لیست
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!patientData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="bg-yellow-50 text-yellow-800 p-6 rounded-lg">
-          <p>بیماری با این شناسه یافت نشد</p>
-        </div>
-      </div>
-    );
-  }
-
+ 
+  // ========== States ==========
+  if (isLoading) return <LoadingScreen />;
+  if (error)     return <ErrorScreen message={error.message} onRetry={refetch} onBack={() => navigate("/admin-panel/users/patients")} />;
+  if (!patientData) return <NotFoundScreen />;
+ 
   const profile = patientData.profile || {};
-
-  // ========== Render ==========
+  const statusCfg = STATUS_CONFIG[patientData.status] || STATUS_CONFIG.inactive;
+  const avatarSrc = avatar || profile.avatar;
+  const initials = getInitials(profile.firstName, profile.lastName, patientData.phoneNumber);
+  const fullDisplayName = profile.fullName || [profile.firstName, profile.lastName].filter(Boolean).join(" ") || "بدون نام";
+ 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto max-w-4xl px-4">
-        {/* Header with breadcrumb */}
-        <div className="mb-6">
-          <nav className="flex mb-4 text-sm text-gray-500">
-            <button onClick={() => navigate('/admin-panel')} className="hover:text-blue-600">پنل مدیریت</button>
-            <span className="mx-2">/</span>
-            <button onClick={() => navigate('/admin-panel/users/patients')} className="hover:text-blue-600">بیماران</button>
-            <span className="mx-2">/</span>
-            <span className="text-gray-800">پروفایل بیمار</span>
-          </nav>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-800">
-                پروفایل بیمار
-              </h1>
-              <span className={`px-3 py-1 rounded-full text-sm ${
-                patientData.status === 'active' 
-                  ? 'bg-green-100 text-green-800' 
-                  : patientData.status === 'pending'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {patientData.status === 'active' ? 'فعال' : 
-                 patientData.status === 'pending' ? 'در انتظار تایید' : 'غیرفعال'}
-              </span>
+    <div className="min-h-screen bg-slate-50/70" dir="rtl">
+      {/* Top gradient strip */}
+      <div className="h-1 w-full bg-gradient-to-l from-blue-500 via-indigo-500 to-violet-500" />
+ 
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+ 
+        {/* ── Breadcrumb ── */}
+        <nav className="flex items-center gap-1.5 text-sm text-slate-400">
+          <button onClick={() => navigate("/admin-panel")} className="hover:text-slate-700 transition">پنل مدیریت</button>
+          <ChevronIcon />
+          <button onClick={() => navigate("/admin-panel/users/patients")} className="hover:text-slate-700 transition">بیماران</button>
+          <ChevronIcon />
+          <span className="text-slate-700 font-medium">پروفایل بیمار</span>
+        </nav>
+ 
+        {/* ── Hero Card ── */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          {/* Cover gradient */}
+          <div className="h-28 bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-400 relative">
+            <div className="absolute inset-0 opacity-20"
+              style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }}
+            />
+          </div>
+ 
+          <div className="px-6 pb-6">
+            <div className="flex items-end gap-4 -mt-12 mb-4">
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt={fullDisplayName}
+                    className="w-20 h-20 rounded-2xl object-cover ring-4 ring-white shadow-md"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-2xl ring-4 ring-white shadow-md bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center">
+                    <span className="text-white text-2xl font-bold">{initials}</span>
+                  </div>
+                )}
+                <label className={`absolute -bottom-1 -left-1 w-7 h-7 bg-white rounded-lg shadow-md border border-slate-100 flex items-center justify-center cursor-pointer hover:bg-indigo-50 transition ${uploading ? "opacity-50 cursor-wait" : ""}`}>
+                  <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} className="hidden" />
+                  {uploading ? <SpinIcon size={14} /> : <CameraIcon />}
+                </label>
+              </div>
+ 
+              {/* Name & meta */}
+              <div className="mb-1 min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl font-bold text-slate-800 leading-tight">{fullDisplayName}</h1>
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${statusCfg.badge}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
+                    {statusCfg.label}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-400 mt-0.5 font-mono">{patientData.phoneNumber}</p>
+              </div>
+ 
+              <button onClick={() => navigate("/admin-panel/users/patients")}
+                className="mb-1 flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-700 transition">
+                <ArrowRightIcon />
+                بازگشت
+              </button>
             </div>
-            
-            <button
-              onClick={() => navigate('/admin-panel/users/patients')}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              بازگشت به لیست
-            </button>
+ 
+            {/* Meta pills */}
+            <div className="flex gap-2 flex-wrap">
+              <MetaPill icon={<IdIcon />} label={`شناسه: ${patientData.id.slice(0, 8)}…`} />
+              <MetaPill icon={<CalIcon />} label={`عضویت: ${new Date(patientData.createdAt).toLocaleDateString("fa-IR")}`} />
+              <MetaPill icon={<EditIcon size={12} />} label={`ویرایش: ${new Date(patientData.modifiedAt).toLocaleDateString("fa-IR")}`} />
+            </div>
           </div>
         </div>
-
-        {/* Main Content */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+ 
+        {/* ── Form Card ── */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
           {/* Tabs */}
-          <div className="border-b border-gray-200">
-            <nav className="flex gap-1 p-4" aria-label="Tabs">
-              <TabButton 
-                label="اطلاعات شخصی" 
-                active={activeTab === "personal"} 
-                onClick={() => setActiveTab("personal")} 
-              />
-              <TabButton 
-                label="اطلاعات تماس" 
-                active={activeTab === "contact"} 
-                onClick={() => setActiveTab("contact")} 
-              />
-            </nav>
+          <div className="border-b border-slate-100 px-6 pt-5 flex gap-1">
+            {[
+              { key: "personal", label: "اطلاعات شخصی",  icon: <UserIcon /> },
+              { key: "contact",  label: "اطلاعات تماس",   icon: <PhoneIcon /> },
+            ].map(({ key, label, icon }) => (
+              <button key={key} type="button" onClick={() => setActiveTab(key)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-all -mb-px ${
+                  activeTab === key
+                    ? "border-indigo-500 text-indigo-600 bg-indigo-50/50"
+                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                }`}>
+                {icon}
+                {label}
+              </button>
+            ))}
           </div>
-
-          {/* Form */}
+ 
           <form onSubmit={handleSubmit(onSubmit)} className="p-6">
-            {/* Tab: Personal Information */}
+ 
+            {/* ── Personal Tab ── */}
             {activeTab === "personal" && (
               <div className="space-y-6">
-                {/* Avatar Section */}
-                <div className="flex items-center gap-6">
-                  <div className="relative">
-                    {avatar || profile.avatar ? (
-                      <img 
-                        src={avatar || profile.avatar} 
-                        alt="پروفایل"
-                        className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200">
-                        <span className="text-gray-500 text-xs">بدون عکس</span>
-                      </div>
-                    )}
-                    
-                    <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-1.5 rounded-full cursor-pointer hover:bg-blue-700 transition shadow-lg">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        disabled={uploading || uploadMutation.isPending}
-                        className="hidden"
-                      />
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                      </svg>
-                    </label>
-                  </div>
-                  
-                  {(uploading || uploadMutation.isPending) && (
-                    <p className="text-blue-600 text-sm">در حال آپلود...</p>
-                  )}
+                <SectionTitle>مشخصات هویتی</SectionTitle>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputField label="نام" register={register("firstName")} error={errors.firstName?.message} placeholder="مثال: علی" />
+                  <InputField label="نام خانوادگی" register={register("lastName")} error={errors.lastName?.message} placeholder="مثال: رضایی" />
+                  <InputField label="نام کامل" register={register("fullName")} error={errors.fullName?.message} placeholder="نام و نام خانوادگی" className="sm:col-span-2" />
+                  <InputField label="کد ملی" register={register("nationalCode")} error={errors.nationalCode?.message} placeholder="۱۰ رقم" dir="ltr" />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    label="شماره موبایل"
-                    value={patientData.phoneNumber}
-                    disabled
-                    icon={
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                    }
-                  />
-                  
-                  <FormField
-                    label="ایمیل"
-                    type="email"
-                    register={register("email")}
-                    error={errors.email?.message}
-                  />
-                  
-                  <FormField
-                    label="نام"
-                    register={register("firstName")}
-                    error={errors.firstName?.message}
-                  />
-                  
-                  <FormField
-                    label="نام خانوادگی"
-                    register={register("lastName")}
-                    error={errors.lastName?.message}
-                  />
-                  
-                  <FormField
-                    label="نام کامل"
-                    register={register("fullName")}
-                    error={errors.fullName?.message}
-                  />
-                  
-                  <FormField
-                    label="تاریخ تولد"
-                    type="date"
-                    register={register("birthDate")}
-                    error={errors.birthDate?.message}
-                  />
-                  
-                  <FormField
-                    label="کد ملی"
-                    register={register("nationalCode")}
-                    error={errors.nationalCode?.message}
-                  />
+ 
+                <Divider />
+                <SectionTitle>اطلاعات سیستمی</SectionTitle>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ReadonlyField label="شماره موبایل" value={patientData.phoneNumber} />
+                  <ReadonlyField label="وضعیت" value={statusCfg.label} />
                 </div>
-
+ 
+                <Divider />
+                <SectionTitle>درباره بیمار</SectionTitle>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    درباره من
-                  </label>
-                  <textarea
-                    {...register("bio")}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="توضیحات مختصری درباره خود وارد کنید..."
+                  <textarea {...register("bio")} rows={4} placeholder="یادداشت یا توضیحات مختصر…"
+                    className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 focus:bg-white transition resize-none placeholder-slate-300"
                   />
-                  {errors.bio && (
-                    <p className="mt-1 text-sm text-red-600">{errors.bio.message}</p>
-                  )}
+                  {errors.bio && <FieldError msg={errors.bio.message} />}
                 </div>
               </div>
             )}
-
-            {/* Tab: Contact Information */}
+ 
+            {/* ── Contact Tab ── */}
             {activeTab === "contact" && (
               <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    آدرس
-                  </label>
-                  <textarea
-                    {...register("address")}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="آدرس کامل"
-                  />
-                  {errors.address && (
-                    <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
-                  )}
+                <SectionTitle>اطلاعات تماس</SectionTitle>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ReadonlyField label="شماره موبایل" value={patientData.phoneNumber} />
+                  <InputField label="ایمیل" type="email" register={register("email")} error={errors.email?.message} placeholder="example@email.com" dir="ltr" />
                 </div>
               </div>
             )}
-
-            {/* Submit Button */}
-            <div className="mt-8 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => reset()}
-                disabled={!isDirty || updateMutation.isPending}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
-              >
-                انصراف
-              </button>
-              
-              <button
-                type="submit"
-                disabled={!isDirty || !isValid || updateMutation.isPending}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {updateMutation.isPending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>در حال ذخیره...</span>
-                  </>
-                ) : (
-                  'ذخیره تغییرات'
-                )}
-              </button>
+ 
+            {/* ── Actions ── */}
+            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between gap-3">
+              <p className={`text-xs transition ${isDirty ? "text-amber-500" : "text-transparent"}`}>
+                ● تغییرات ذخیره نشده
+              </p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => reset()} disabled={!isDirty || updateMutation.isPending}
+                  className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition disabled:opacity-40">
+                  انصراف
+                </button>
+                <button type="submit" disabled={!isDirty || !isValid || updateMutation.isPending}
+                  className="px-5 py-2 text-sm font-medium bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm shadow-indigo-200">
+                  {updateMutation.isPending ? (
+                    <><SpinIcon size={16} /><span>در حال ذخیره…</span></>
+                  ) : (
+                    <><SaveIcon /><span>ذخیره تغییرات</span></>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
-        </div>
-
-        {/* Metadata Section */}
-        <div className="mt-4 bg-gray-50 rounded-lg p-4 text-sm text-gray-500">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span>شناسه: {patientData.id}</span>
-            <span>•</span>
-            <span>تاریخ ایجاد: {new Date(patientData.createdAt).toLocaleDateString('fa-IR')}</span>
-            <span>•</span>
-            <span>آخرین تغییر: {new Date(patientData.modifiedAt).toLocaleDateString('fa-IR')}</span>
-          </div>
         </div>
       </div>
     </div>
   );
 }
-
-// ========== کامپوننت‌های کمکی ==========
-
-const TabButton = ({ label, active, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-      active
-        ? 'bg-blue-600 text-white shadow'
-        : 'text-gray-600 hover:bg-gray-100'
-    }`}
-  >
-    {label}
-  </button>
+ 
+// ========== Sub-components ==========
+ 
+const SectionTitle = ({ children }) => (
+  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest">{children}</h3>
 );
-
-const FormField = ({ label, register, error, disabled, icon, ...props }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">
-      {label}
-    </label>
-    <div className="relative">
-      {icon && (
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-          {icon}
-        </div>
-      )}
-      {register ? (
-        <input
-          {...register}
-          disabled={disabled}
-          className={`w-full ${icon ? 'pr-10' : 'px-3'} py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${
-            disabled ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'
-          } ${error ? 'border-red-500' : 'border-gray-300'}`}
-          {...props}
-        />
-      ) : (
-        <input
-          value={props.value}
-          disabled
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
-          {...props}
-        />
-      )}
-    </div>
-    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+ 
+const Divider = () => <hr className="border-slate-100" />;
+ 
+const FieldError = ({ msg }) => (
+  <p className="mt-1.5 text-xs text-rose-500 flex items-center gap-1">
+    <span>⚠</span>{msg}
+  </p>
+);
+ 
+const InputField = ({ label, register, error, className = "", dir, ...props }) => (
+  <div className={className}>
+    <label className="block text-xs font-medium text-slate-500 mb-1.5">{label}</label>
+    <input {...register} dir={dir}
+      className={`w-full px-4 py-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 focus:bg-white transition placeholder-slate-300 ${
+        error ? "border-rose-300 bg-rose-50" : "border-slate-200"
+      }`}
+      {...props}
+    />
+    {error && <FieldError msg={error} />}
   </div>
 );
+ 
+const ReadonlyField = ({ label, value }) => (
+  <div>
+    <label className="block text-xs font-medium text-slate-500 mb-1.5">{label}</label>
+    <div className="w-full px-4 py-2.5 text-sm bg-slate-100 border border-slate-200 rounded-xl text-slate-500 select-none">
+      {value || "—"}
+    </div>
+  </div>
+);
+ 
+const MetaPill = ({ icon, label }) => (
+  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 border border-slate-100 text-xs text-slate-400">
+    {icon}{label}
+  </span>
+);
+ 
+// ── Loading / Error / NotFound ──
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="flex flex-col items-center gap-3 text-slate-400">
+      <SpinIcon size={36} />
+      <p className="text-sm">در حال بارگذاری…</p>
+    </div>
+  </div>
+);
+ 
+const ErrorScreen = ({ message, onRetry, onBack }) => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-rose-100 p-8 max-w-sm w-full text-center space-y-4">
+      <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center mx-auto text-rose-400 text-2xl">!</div>
+      <h3 className="font-semibold text-slate-800">خطا در بارگذاری</h3>
+      <p className="text-sm text-slate-500">{message}</p>
+      <div className="flex gap-2 justify-center">
+        <button onClick={onBack} className="px-4 py-2 text-sm border border-slate-200 rounded-xl hover:bg-slate-50 transition">بازگشت</button>
+        <button onClick={onRetry} className="px-4 py-2 text-sm bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition">تلاش مجدد</button>
+      </div>
+    </div>
+  </div>
+);
+ 
+const NotFoundScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-8 text-amber-700 text-sm">بیماری با این شناسه یافت نشد</div>
+  </div>
+);
+ 
 
-
-
-
-
+// ========== Icons ==========
+const SpinIcon   = ({ size = 20 }) => <svg className="animate-spin" style={{ width: size, height: size }} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/></svg>;
+const ChevronIcon = () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>;
+const CameraIcon  = () => <svg className="w-3.5 h-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>;
+const ArrowRightIcon = () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>;
+const SaveIcon    = () => <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>;
+const UserIcon    = () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+const PhoneIcon   = () => <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.19 2 2 0 012 .01h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>;
+const IdIcon      = () => <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8l-2 4h12z"/></svg>;
+const CalIcon     = () => <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>;
+const EditIcon    = ({ size = 12 }) => <svg style={{ width: size, height: size }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
 
 
 
