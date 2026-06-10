@@ -20,19 +20,20 @@ import AdminPanel from "./pages/adminpanel/AdminPanel"
 import HomeAdminPanel from "./pages/adminpanel/Home"
 import Articles from "./pages/adminpanel/Articles"
 import Comments from "./pages/adminpanel/Comments"
-import Users from "./pages/adminpanel/user-management/Users"
+// import Users from "./pages/adminpanel/user-management/Users"
 import NotFound from "./pages/Unauthorized"
-import Unauthorized from "./pages/Unauthorized"
+// import Unauthorized from "./pages/Unauthorized"
 import TakingVisit from "./pages/app/TakingVisit"
 import AppointmentsUser from "./pages/Userpanel/Appointments"
-import UsersList from "./pages/adminpanel/user-management/UsersList"
+import PatientList from "./pages/adminpanel/user-management/PatientList"
 
 // import RoleProtectedRoute from "./features/RoleProtectedRoute "
+import UsersList from "./pages/adminpanel/user-management/UsersList"
 import AppointmentsDentist from "./pages/dentistpanel/Appointments"
 import ScheduleSettings from "./pages/dentistpanel/ScheduleSettings"
 import VerifyOTP from "./pages/VerifyOTP"
 import DentistProfile from "./pages/adminpanel/user-management/DentistProfile"
-import Patients from "./pages/adminpanel/user-management/Patients"
+// import UserList from "./pages/adminpanel/user-management/PatientList"
 import ProfilePatients from "./pages/adminpanel/user-management/ProfilePatients"
 import DentistList from "./pages/adminpanel/user-management/DentistList"
 
@@ -96,13 +97,13 @@ let routes = [
         
         // ===== مسیرهای مدیریت کاربران (Flat) =====
         { path: "users", element: <UsersList /> },                    // لیست همه کاربران
-        { path: "users/dentists", element: <DentistProfile /> },      // لیست دندانپزشکان
-        { path: "users/patients", element: <Patients/> },        // لیست بیماران
-        { path: "users/dentist", element: <DentistList/> },        // لیست بیماران
+        // { path: "users/dentists", element: <DentistProfile /> },      // لیست دندانپزشکان
+        { path: "users/patients-list", element: <PatientList/> },        // لیست بیماران
+        { path: "users/dentist-list", element: <DentistList/> },        // لیست بیماران
         
         // پروفایل‌ها (با شناسه)
-        { path: "user/dentist/:id", element: <DentistProfile /> },    // پروفایل دندانپزشک
-        { path: "user/patient/:id", element: <ProfilePatients /> },    // پروفایل بیمار
+        { path: "users/dentist/:id", element: <DentistProfile /> },    // پروفایل دندانپزشک
+        { path: "users/patient/:id", element: <ProfilePatients /> },    // پروفایل بیمار
         
         // ===== سایر بخش‌ها =====
         { path: "articles", element: <Articles /> },
