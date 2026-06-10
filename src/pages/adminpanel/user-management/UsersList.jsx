@@ -832,7 +832,7 @@ const deleteUser = async (userId) => {
   }
 };
 
-export default function UsersPage() {
+export default function UsersList() {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
