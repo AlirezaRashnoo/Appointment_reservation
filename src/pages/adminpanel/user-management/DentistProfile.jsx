@@ -1,614 +1,671 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useParams, useNavigate } from "react-router-dom";
 import apiService from "@/features/api";
-import { toast } from "react-hot-toast"; 
-
-
-
+import { toast } from "react-hot-toast";
+import Cookies from "js-cookie";
+ 
+// ========== Schema ==========
 const dentistSchema = z.object({
-  phoneNumber: z.string().optional(),
-  status: z.string().optional(),
-  
-  nationalCode: z.string().min(10, "کد ملی باید ۱۰ رقم باشد").max(10, "کد ملی باید ۱۰ رقم باشد").optional(),
+  phoneNumber: z
+    .string()
+    .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست")
+    .optional()
+    .or(z.literal("")),
+  status: z.enum(["active", "pending", "inactive"]).optional(),
+  firstName: z.string().min(1, "نام الزامی است").optional().or(z.literal("")),
+  lastName: z
+    .string()
+    .min(1, "نام خانوادگی الزامی است")
+    .optional()
+    .or(z.literal("")),
+  email: z
+    .string()
+    .email("ایمیل معتبر نیست")
+    .optional()
+    .or(z.literal("")),
+  bio: z
+    .string()
+    .max(500, "حداکثر ۵۰۰ کاراکتر مجاز است")
+    .optional()
+    .or(z.literal("")),
   medicalCouncilNumber: z.string().min(1, "شماره نظام پزشکی الزامی است"),
-  birthDateShamsi: z.string().optional(),
-  yearsOfExperience: z.number().min(0, "سال سابقه نمی‌تواند منفی باشد").nullable().optional(),
+  yearsOfExperience: z
+    .number()
+    .min(0, "سال سابقه نمی‌تواند منفی باشد")
+    .nullable()
+    .optional(),
   specialization: z.string().min(1, "تخصص الزامی است"),
   degree: z.string().min(1, "مدرک تحصیلی الزامی است"),
-  portfolio: z.array(z.string().url("آدرس معتبر نیست")).optional(),
-  additionalPhoneNumbers: z.array(z.string().regex(/^09\d{9}$/, "شماره معتبر نیست")).max(2, "حداکثر دو شماره مجاز است").optional(),
-  
-  // آدرس
-  shortAddr: z.string().optional(),
-  longAddr: z.string().max(500, "حداکثر ۵۰۰ کاراکتر مجاز است.").optional(),
 });
-
-// ========== API Functions ==========
+ 
+// ========== Constants ==========
+const STATUS_OPTIONS = [
+  { value: "active", label: "فعال" },
+  { value: "pending", label: "در انتظار تایید" },
+  { value: "inactive", label: "غیرفعال" },
+];
+ 
+const STATUS_MAP = {
+  active: {
+    badge: "bg-green-50 text-green-700",
+    dot: "bg-green-500",
+    label: "فعال",
+  },
+  pending: {
+    badge: "bg-yellow-50 text-yellow-700",
+    dot: "bg-yellow-500",
+    label: "در انتظار تایید",
+  },
+  inactive: {
+    badge: "bg-red-50 text-red-600",
+    dot: "bg-red-400",
+    label: "غیرفعال",
+  },
+};
+ 
+// ========== API Helpers ==========
+const getCsrfToken = () => Cookies.get("csrf_token");
+ 
 const fetchDentistProfile = async (dentistId) => {
-  try {
-    const response = await apiService.get(`/dentist/admin/${dentistId}`);
-    
-    if (response.data && response.data.data) {
-      return response.data.data;
-    }
-    
-    throw new Error('ساختار پاسخ نامعتبر است');
-  } catch (error) {
-    console.error('Error fetching dentist profile:', error);
-    throw new Error(error.response?.data?.message || 'خطا در دریافت اطلاعات دندانپزشک');
-  }
+  const response = await apiService.get(`/dentist/admin/${dentistId}`, {
+    headers: { "X-CSRF-Token": getCsrfToken() },
+  });
+  if (response.data?.data) return response.data.data;
+  throw new Error("ساختار پاسخ نامعتبر است");
 };
-
+ 
 const updateDentistProfile = async ({ dentistId, profileData }) => {
-  try {
-    const response = await apiService.patch(`/dentist/admin/${dentistId}`, profileData);
-    
-    if (response.data) {
-      return response.data;
-    }
-    
-    throw new Error('خطا در بروزرسانی اطلاعات');
-  } catch (error) {
-    console.error('Error updating dentist profile:', error);
-    throw new Error(error.response?.data?.message || 'خطا در بروزرسانی اطلاعات دندانپزشک');
-  }
+  const payload = {};
+ 
+  // فیلدهای سطح اصلی دندانپزشک
+  if (profileData.medicalCouncilNumber)
+    payload.medicalCouncilNumber = profileData.medicalCouncilNumber;
+  if (profileData.yearsOfExperience != null)
+    payload.yearsOfExperience = Number(profileData.yearsOfExperience);
+  if (profileData.specialization)
+    payload.specialization = profileData.specialization;
+  if (profileData.degree) payload.degree = profileData.degree;
+ 
+  // ساختار user
+  const userPayload = {};
+  if (profileData.status) userPayload.status = profileData.status;
+  if (profileData.phoneNumber) userPayload.phoneNumber = profileData.phoneNumber;
+ 
+  // ساختار user.profile
+  const profileFields = {};
+  if (profileData.email) profileFields.email = profileData.email;
+  if (profileData.firstName) profileFields.firstName = profileData.firstName;
+  if (profileData.lastName) profileFields.lastName = profileData.lastName;
+  if (profileData.bio !== undefined) profileFields.bio = profileData.bio;
+ 
+  if (Object.keys(profileFields).length > 0) userPayload.profile = profileFields;
+  if (Object.keys(userPayload).length > 0) payload.user = userPayload;
+ 
+  console.log("Update Payload:", JSON.stringify(payload, null, 2));
+ 
+  const response = await apiService.patch(`/dentist/admin/${dentistId}`, payload, {
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": getCsrfToken(),
+    },
+  });
+ 
+  if (response.data) return response.data;
+  throw new Error("خطا در بروزرسانی اطلاعات");
 };
-
-const uploadPortfolioImage = async ({ dentistId, file }) => {
-  try {
-    const formData = new FormData();
-    formData.append('portfolio', file);
-    
-    const response = await apiService.post(`/dentist/admin/${dentistId}/portfolio`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error uploading portfolio image:', error);
-    throw new Error(error.response?.data?.message || 'خطا در آپلود تصویر');
-  }
-};
-
-const deletePortfolioImage = async ({ dentistId, imageUrl }) => {
-  try {
-    const response = await apiService.delete(`/dentist/admin/${dentistId}/portfolio`, {
-      data: { imageUrl }
-    });
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting portfolio image:', error);
-    throw new Error(error.response?.data?.message || 'خطا در حذف تصویر');
-  }
-};
-
+ 
+// ========== Main Component ==========
 export default function DentistProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
-  const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState("basic");
-
-  const { 
-    data: dentistData, 
-    isLoading, 
+  const [activeTab, setActiveTab] = useState("dentist");
+ 
+  const {
+    data: dentistData,
+    isLoading,
     error,
-    refetch 
+    refetch,
   } = useQuery({
     queryKey: ["dentist-profile", id],
     queryFn: () => fetchDentistProfile(id),
     enabled: !!id,
     retry: 1,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
   });
-
+ 
   const updateMutation = useMutation({
     mutationFn: updateDentistProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dentist-profile", id] });
-      toast.success('اطلاعات با موفقیت بروزرسانی شد');
+      toast.success("اطلاعات با موفقیت بروزرسانی شد");
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (error) => toast.error(error.message),
   });
-
-  const uploadMutation = useMutation({
-    mutationFn: uploadPortfolioImage,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["dentist-profile", id] });
-      toast.success('تصویر با موفقیت آپلود شد');
-      
-      if (data.data?.portfolio) {
-        setValue('portfolio', data.data.portfolio);
-      }
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const deleteImageMutation = useMutation({
-    mutationFn: deletePortfolioImage,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["dentist-profile", id] });
-      toast.success('تصویر با موفقیت حذف شد');
-      
-      if (data.data?.portfolio) {
-        setValue('portfolio', data.data.portfolio);
-      }
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
+ 
   const {
     register,
     handleSubmit,
     formState: { errors, isDirty, isValid },
     reset,
-    setValue,
-    watch,
-    control,
   } = useForm({
     resolver: zodResolver(dentistSchema),
-    mode: 'onChange',
+    mode: "onChange",
     defaultValues: {
-      portfolio: [],
-      additionalPhoneNumbers: [],
+      phoneNumber: "",
+      status: "active",
+      firstName: "",
+      lastName: "",
+      email: "",
+      bio: "",
+      medicalCouncilNumber: "",
       yearsOfExperience: null,
-    }
+      specialization: "",
+      degree: "",
+    },
   });
-
-  const portfolio = watch("portfolio") || [];
-  const additionalPhoneNumbers = watch("additionalPhoneNumbers") || [];
-
-  // ========== ریست فرم با داده‌های دریافتی ==========
+ 
   useEffect(() => {
     if (dentistData) {
-      const formData = {
-        // اطلاعات کاربر
-        phoneNumber: dentistData.user?.phoneNumber || '',
-        status: dentistData.user?.status || '',
-        
-        nationalCode: dentistData.nationalCode || '',
-        medicalCouncilNumber: dentistData.medicalCouncilNumber || '',
-        birthDateShamsi: dentistData.birthDateShamsi || '',
-        yearsOfExperience: dentistData.yearsOfExperience,
-        specialization: dentistData.specialization || '',
-        degree: dentistData.degree || '',
-        portfolio: dentistData.portfolio || [],
-        additionalPhoneNumbers: dentistData.additionalPhoneNumbers || [],
-        
-        shortAddr: dentistData.address?.shortAddr || '',
-        longAddr: dentistData.address?.longAddr || '',
-      };
-      
-      reset(formData);
+      reset({
+        phoneNumber: dentistData.user?.phoneNumber || "",
+        status: dentistData.user?.status || "active",
+        firstName: dentistData.user?.profile?.firstName || "",
+        lastName: dentistData.user?.profile?.lastName || "",
+        email: dentistData.user?.profile?.email || "",
+        bio: dentistData.user?.profile?.bio || "",
+        medicalCouncilNumber: dentistData.medicalCouncilNumber || "",
+        yearsOfExperience: dentistData.yearsOfExperience ?? null,
+        specialization: dentistData.specialization || "",
+        degree: dentistData.degree || "",
+      });
     }
   }, [dentistData, reset]);
-
-  const addField = useCallback((key) => {
-    const current = watch(key) || [];
-    setValue(key, [...current, ""]);
-  }, [watch, setValue]);
-
-  const updateField = useCallback((key, index, value) => {
-    const current = [...(watch(key) || [])];
-    current[index] = value;
-    setValue(key, current, { shouldDirty: true });
-  }, [watch, setValue]);
-
-  const removeField = useCallback((key, index) => {
-    const current = [...(watch(key) || [])];
-    current.splice(index, 1);
-    setValue(key, current, { shouldDirty: true });
-  }, [watch, setValue]);
-
-  const handlePortfolioUpload = useCallback(async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('لطفاً فقط تصویر انتخاب کنید');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) { // 5MB
-      toast.error('حجم تصویر نباید بیشتر از ۵ مگابایت باشد');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      await uploadMutation.mutateAsync({ dentistId: id, file });
-    } finally {
-      setUploading(false);
-      event.target.value = ''; 
-    }
-  }, [id, uploadMutation]);
-
-  const handleDeletePortfolio = useCallback(async (imageUrl) => {
-    if (window.confirm('آیا از حذف این تصویر مطمئن هستید؟')) {
-      await deleteImageMutation.mutateAsync({ dentistId: id, imageUrl });
-    }
-  }, [id, deleteImageMutation]);
-
-  const onSubmit = useCallback((formData) => {
-    const cleanData = Object.fromEntries(
-      Object.entries(formData).filter(([_, v]) => v != null && v !== '')
-    );
-    
-    updateMutation.mutate({ dentistId: id, profileData: cleanData });
-  }, [id, updateMutation]);
-
+ 
+  const onSubmit = useCallback(
+    (formData) => {
+      updateMutation.mutate({ dentistId: id, profileData: formData });
+    },
+    [id, updateMutation]
+  );
+ 
+  // ─── Loading ───
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-200 border-t-blue-600" />
+          <p className="text-sm text-gray-400">در حال بارگذاری...</p>
+        </div>
       </div>
     );
   }
-
+ 
+  // ─── Error ───
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="bg-red-50 text-red-800 p-6 rounded-lg max-w-md text-center">
-          <h3 className="text-lg font-semibold mb-2">خطا در بارگذاری اطلاعات</h3>
-          <p className="mb-4">{error.message}</p>
-          <button 
-            onClick={() => refetch()}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-          >
-            تلاش مجدد
-          </button>
-          <button 
-            onClick={() => navigate('/admin-panel/users/dentists')}
-            className="mr-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
-          >
-            بازگشت به لیست
-          </button>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="bg-white border border-red-100 rounded-xl p-8 max-w-sm w-full text-center shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h3 className="text-base font-medium text-gray-800 mb-1">خطا در بارگذاری</h3>
+          <p className="text-sm text-gray-400 mb-5">{error.message}</p>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            >
+              تلاش مجدد
+            </button>
+            <button
+              onClick={() => navigate("/admin-panel/users/dentists")}
+              className="px-4 py-2 text-sm border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition"
+            >
+              بازگشت
+            </button>
+          </div>
         </div>
       </div>
     );
   }
-
+ 
+  // ─── Not found ───
   if (!dentistData) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="bg-yellow-50 text-yellow-800 p-6 rounded-lg">
-          <p>دندانپزشکی با این شناسه یافت نشد</p>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
+          <p className="text-gray-500">دندانپزشکی با این شناسه یافت نشد</p>
         </div>
       </div>
     );
   }
-
+ 
+  const status = dentistData.user?.status || "inactive";
+  const statusStyle = STATUS_MAP[status] ?? STATUS_MAP.inactive;
+  const fullName = `${dentistData.user?.profile?.firstName || ""} ${dentistData.user?.profile?.lastName || ""}`.trim();
+  const initials = `${dentistData.user?.profile?.firstName?.[0] || ""}${dentistData.user?.profile?.lastName?.[0] || ""}`;
+ 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto max-w-6xl px-4">
-        {/* Header with breadcrumb */}
-        <div className="mb-6">
-          <nav className="flex mb-4 text-sm text-gray-500">
-            <button onClick={() => navigate('/admin-panel')} className="hover:text-blue-600">پنل مدیریت</button>
-            <span className="mx-2">/</span>
-            <button onClick={() => navigate('/admin-panel/users/dentists')} className="hover:text-blue-600">دندانپزشکان</button>
-            <span className="mx-2">/</span>
-            <span className="text-gray-800">پروفایل دندانپزشک</span>
-          </nav>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-800">
-                پروفایل دندانپزشک
-              </h1>
-              <span className={`px-3 py-1 rounded-full text-sm ${
-                dentistData.user?.status === 'active' 
-                  ? 'bg-green-100 text-green-800' 
-                  : dentistData.user?.status === 'pending'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {dentistData.user?.status === 'active' ? 'فعال' : 
-                 dentistData.user?.status === 'pending' ? 'در انتظار تایید' : 'غیرفعال'}
+    <div className="min-h-screen bg-slate-50 py-6" dir="rtl">
+      <div className="mx-auto max-w-5xl px-4">
+ 
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm text-gray-400 mb-6">
+          <button
+            onClick={() => navigate("/admin-panel")}
+            className="hover:text-blue-600 transition"
+          >
+            پنل مدیریت
+          </button>
+          <svg className="w-3.5 h-3.5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <button
+            onClick={() => navigate("/admin-panel/users/dentists")}
+            className="hover:text-blue-600 transition"
+          >
+            دندانپزشکان
+          </button>
+          <svg className="w-3.5 h-3.5 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-gray-700">ویرایش پروفایل</span>
+        </nav>
+ 
+        <div className="grid grid-cols-[272px_1fr] gap-5 items-start">
+ 
+          {/* ══════════════════════════════════════
+              SIDEBAR
+          ══════════════════════════════════════ */}
+          <aside className="bg-white border border-gray-100 rounded-xl overflow-hidden sticky top-6 shadow-sm">
+ 
+            {/* Avatar & identity */}
+            <div className="px-6 py-7 text-center border-b border-gray-100">
+              {dentistData.user?.profile?.avatar ? (
+                <img
+                  src={dentistData.user.profile.avatar}
+                  alt={fullName}
+                  className="w-20 h-20 rounded-full object-cover mx-auto mb-4 ring-4 ring-slate-50"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4 text-2xl font-medium text-blue-700 select-none">
+                  {initials || "؟"}
+                </div>
+              )}
+              <p className="font-medium text-gray-900 mb-0.5 text-base">{fullName || "—"}</p>
+              <p className="text-sm text-gray-400 mb-3">{dentistData.specialization || "—"}</p>
+              {/* Status badge */}
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${statusStyle.badge}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                {statusStyle.label}
               </span>
             </div>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={() => navigate('/admin-panel/users/dentists')}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-              >
-                بازگشت به لیست
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Tabs */}
-          <div className="border-b border-gray-200">
-            <nav className="flex gap-1 p-4" aria-label="Tabs">
-              <TabButton 
-                label="اطلاعات پایه" 
-                active={activeTab === "basic"} 
-                onClick={() => setActiveTab("basic")} 
+ 
+            {/* Navigation */}
+            <nav className="p-2 border-b border-gray-100">
+              <NavItem
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                }
+                label="اطلاعات تخصصی"
+                active={activeTab === "dentist"}
+                onClick={() => setActiveTab("dentist")}
               />
-              <TabButton 
-                label="پورتفولیو" 
-                active={activeTab === "portfolio"} 
-                onClick={() => setActiveTab("portfolio")} 
-              />
-              <TabButton 
-                label="اطلاعات تماس" 
-                active={activeTab === "contact"} 
-                onClick={() => setActiveTab("contact")} 
-              />
-              <TabButton 
-                label="آدرس" 
-                active={activeTab === "address"} 
-                onClick={() => setActiveTab("address")} 
+              <NavItem
+                icon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                }
+                label="اطلاعات کاربری"
+                active={activeTab === "user"}
+                onClick={() => setActiveTab("user")}
               />
             </nav>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="p-6">
-            {/* Tab: Basic Information */}
-            {activeTab === "basic" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    label="شماره موبایل"
-                    value={dentistData.user?.phoneNumber}
-                    disabled
-                  />
-                  
-                  <FormField
-                    label="کد ملی"
-                    register={register("nationalCode")}
-                    error={errors.nationalCode?.message}
-                  />
-                  
-                  <FormField
-                    label="شماره نظام پزشکی"
-                    register={register("medicalCouncilNumber")}
-                    error={errors.medicalCouncilNumber?.message}
-                    required
-                  />
-                  
-                  <FormField
-                    label="تاریخ تولد (شمسی)"
-                    register={register("birthDateShamsi")}
-                    placeholder="مثال: 1360/05/15"
-                    error={errors.birthDateShamsi?.message}
-                  />
-                  
-                  <FormField
-                    label="تخصص"
-                    register={register("specialization")}
-                    error={errors.specialization?.message}
-                    required
-                  />
-                  
-                  <FormField
-                    label="مدرک تحصیلی"
-                    register={register("degree")}
-                    error={errors.degree?.message}
-                    required
-                  />
-                  
-                  <FormField
-                    label="سال‌های سابقه"
-                    type="number"
-                    register={register("yearsOfExperience", { valueAsNumber: true })}
-                    error={errors.yearsOfExperience?.message}
-                  />
+ 
+            {/* Quick stats */}
+            <div className="px-5 py-4 space-y-2.5">
+              <SidebarStat label="شماره نظام پزشکی" value={dentistData.medicalCouncilNumber || "—"} />
+              <SidebarStat
+                label="سابقه کار"
+                value={dentistData.yearsOfExperience != null ? `${dentistData.yearsOfExperience} سال` : "—"}
+              />
+              <SidebarStat
+                label="تاریخ عضویت"
+                value={
+                  dentistData.user?.createdAt
+                    ? new Date(dentistData.user.createdAt).toLocaleDateString("fa-IR")
+                    : "—"
+                }
+                ltr
+              />
+              <SidebarStat label="مدرک" value={dentistData.degree || "—"} />
+            </div>
+          </aside>
+ 
+          {/* ══════════════════════════════════════
+              MAIN FORM
+          ══════════════════════════════════════ */}
+          <main>
+            <form onSubmit={handleSubmit(onSubmit)} noValidate>
+              <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+ 
+                {/* Section header */}
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    {activeTab === "dentist" ? (
+                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800 text-sm">
+                      {activeTab === "dentist" ? "اطلاعات تخصصی" : "اطلاعات کاربری"}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {activeTab === "dentist"
+                        ? "مشخصات حرفه‌ای و پزشکی دندانپزشک"
+                        : "اطلاعات حساب کاربری و تماس"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Tab: Portfolio */}
-            {activeTab === "portfolio" && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-gray-700">
-                    تصاویر نمونه کار
-                  </label>
-                  
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePortfolioUpload}
-                      disabled={uploading || uploadMutation.isPending}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
+ 
+                {/* Form body */}
+                <div className="p-6">
+ 
+                  {/* ─── Tab: Dentist Info ─── */}
+                  {activeTab === "dentist" && (
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-2 gap-5">
+                        <FormField
+                          label="شماره نظام پزشکی"
+                          register={register("medicalCouncilNumber")}
+                          error={errors.medicalCouncilNumber?.message}
+                          required
+                        />
+                        <FormField
+                          label="سال‌های سابقه"
+                          type="number"
+                          register={register("yearsOfExperience", { valueAsNumber: true })}
+                          error={errors.yearsOfExperience?.message}
+                          placeholder="مثال: 7"
+                        />
+                        <FormField
+                          label="تخصص"
+                          register={register("specialization")}
+                          error={errors.specialization?.message}
+                          required
+                        />
+                        <FormField
+                          label="مدرک تحصیلی"
+                          register={register("degree")}
+                          error={errors.degree?.message}
+                          required
+                        />
+                      </div>
+ 
+                      {/* Read-only section */}
+                      <ReadOnlySection
+                        title="اطلاعات فقط-خواندنی"
+                        items={[
+                          { label: "تاریخ تولد", value: dentistData.birthDateShamsi },
+                          {
+                            label: "امتیاز میانگین",
+                            value:
+                              dentistData.averageRating != null
+                                ? String(dentistData.averageRating)
+                                : "—",
+                          },
+                          {
+                            label: "تعداد نظرات",
+                            value:
+                              dentistData.ratingCount != null
+                                ? String(dentistData.ratingCount)
+                                : "—",
+                          },
+                        ]}
+                      />
+                    </div>
+                  )}
+ 
+                  {/* ─── Tab: User Info ─── */}
+                  {activeTab === "user" && (
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-2 gap-5">
+                        <FormField
+                          label="نام"
+                          register={register("firstName")}
+                          error={errors.firstName?.message}
+                        />
+                        <FormField
+                          label="نام خانوادگی"
+                          register={register("lastName")}
+                          error={errors.lastName?.message}
+                        />
+                        <FormField
+                          label="شماره موبایل"
+                          register={register("phoneNumber")}
+                          error={errors.phoneNumber?.message}
+                          placeholder="09xxxxxxxxx"
+                          ltr
+                        />
+                        <FormField
+                          label="ایمیل"
+                          type="email"
+                          register={register("email")}
+                          error={errors.email?.message}
+                          placeholder="example@email.com"
+                          ltr
+                        />
+                        <FormField
+                          label="وضعیت حساب"
+                          type="select"
+                          register={register("status")}
+                          error={errors.status?.message}
+                          options={STATUS_OPTIONS}
+                        />
+                      </div>
+ 
+                      {/* Bio */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                          بیوگرافی
+                        </label>
+                        <textarea
+                          {...register("bio")}
+                          rows={4}
+                          placeholder="درباره دندانپزشک بنویسید..."
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition resize-y leading-relaxed"
+                        />
+                        {errors.bio && (
+                          <p className="mt-1 text-xs text-red-500">{errors.bio.message}</p>
+                        )}
+                      </div>
+ 
+                      {/* Read-only section */}
+                      <ReadOnlySection
+                        title="اطلاعات فقط-خواندنی"
+                        items={[
+                          {
+                            label: "کد ملی",
+                            value: dentistData.user?.profile?.nationalCode || "—",
+                          },
+                          { label: "نقش", value: dentistData.user?.role || "—" },
+                          {
+                            label: "آخرین ویرایش",
+                            value: dentistData.user?.modifiedAt
+                              ? new Date(dentistData.user.modifiedAt).toLocaleDateString("fa-IR")
+                              : "—",
+                          },
+                        ]}
+                      />
+                    </div>
+                  )}
+                </div>
+ 
+                {/* Form footer */}
+                <div className="px-6 py-4 border-t border-gray-100 bg-slate-50/60 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs">
+                    {isDirty ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                        <span className="text-amber-600 font-medium">تغییرات ذخیره نشده</span>
+                      </>
+                    ) : (
+                      <span className="text-gray-400">هیچ تغییری اعمال نشده</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      disabled={uploading || uploadMutation.isPending}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                      onClick={() => reset()}
+                      disabled={!isDirty || updateMutation.isPending}
+                      className="px-5 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {uploading || uploadMutation.isPending ? 'در حال آپلود...' : 'آپلود تصویر جدید'}
+                      انصراف
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!isDirty || !isValid || updateMutation.isPending}
+                      className="px-5 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {updateMutation.isPending ? (
+                        <>
+                          <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          در حال ذخیره...
+                        </>
+                      ) : (
+                        "ذخیره تغییرات"
+                      )}
                     </button>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {portfolio.map((image, index) => (
-                    <div key={index} className="relative group">
-                      <img 
-                        src={image} 
-                        alt={`Portfolio ${index + 1}`}
-                        className="w-full h-40 object-cover rounded-lg border border-gray-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePortfolio(image)}
-                        disabled={deleteImageMutation.isPending}
-                        className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition hover:bg-red-700 disabled:opacity-50"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {portfolio.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">
-                    هیچ تصویری آپلود نشده است
-                  </p>
-                )}
               </div>
-            )}
-
-            {/* Tab: Contact Information */}
-            {activeTab === "contact" && (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    شماره‌های تماس اضافی
-                  </label>
-                  <FieldList
-                    values={additionalPhoneNumbers}
-                    onAdd={() => addField('additionalPhoneNumbers')}
-                    onUpdate={(index, value) => updateField('additionalPhoneNumbers', index, value)}
-                    onRemove={(index) => removeField('additionalPhoneNumbers', index)}
-                    placeholder="شماره تماس"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Tab: Address */}
-            {activeTab === "address" && (
-              <div className="space-y-6">
-                <FormField
-                  label="آدرس خلاصه"
-                  register={register("shortAddr")}
-                  placeholder="مثال: تهران، خیابان ولیعصر"
-                  error={errors.shortAddr?.message}
-                />
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    آدرس کامل
-                  </label>
-                  <textarea
-                    {...register("longAddr")}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="آدرس کامل مطب"
-                  />
-                  {errors.longAddr && (
-                    <p className="mt-1 text-sm text-red-600">{errors.longAddr.message}</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <div className="mt-8 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => reset()}
-                disabled={!isDirty || updateMutation.isPending}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
-              >
-                انصراف
-              </button>
-              
-              <button
-                type="submit"
-                disabled={!isDirty || !isValid || updateMutation.isPending}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {updateMutation.isPending ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
-              </button>
-            </div>
-          </form>
+            </form>
+          </main>
         </div>
       </div>
     </div>
   );
 }
-
-
-const TabButton = ({ label, active, onClick }) => (
+ 
+// ═══════════════════════════════════════════════════════════
+//  Sub-components
+// ═══════════════════════════════════════════════════════════
+ 
+const NavItem = ({ icon, label, active, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+    className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm transition text-right ${
       active
-        ? 'bg-blue-600 text-white shadow'
-        : 'text-gray-600 hover:bg-gray-100'
+        ? "bg-blue-50 text-blue-700 font-medium"
+        : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
     }`}
   >
+    <span className={active ? "text-blue-600" : "text-gray-400"}>{icon}</span>
     {label}
   </button>
 );
-
-const FormField = ({ label, register, error, disabled, required, ...props }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">
-      {label}
-      {required && <span className="text-red-500 mr-1">*</span>}
-    </label>
-    <input
-      {...register}
-      disabled={disabled}
-      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${
-        disabled ? 'bg-gray-100 text-gray-500' : 'bg-white'
-      } ${error ? 'border-red-500' : 'border-gray-300'}`}
-      {...props}
-    />
-    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+ 
+const SidebarStat = ({ label, value, ltr = false }) => (
+  <div className="flex items-center justify-between text-sm py-2 border-b border-gray-50 last:border-0">
+    <span className="text-gray-400 text-xs">{label}</span>
+    <span
+      className={`font-medium text-gray-700 text-xs ${ltr ? "direction-ltr" : ""}`}
+      style={ltr ? { direction: "ltr" } : {}}
+    >
+      {value}
+    </span>
   </div>
 );
-
-const FieldList = ({ values, onAdd, onUpdate, onRemove, placeholder }) => (
-  <div className="space-y-2">
-    {values.map((value, index) => (
-      <div key={index} className="flex gap-2">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onUpdate(index, e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        <button
-          type="button"
-          onClick={() => onRemove(index)}
-          className="px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition"
+ 
+const FormField = ({
+  label,
+  register,
+  error,
+  type = "text",
+  options = [],
+  required = false,
+  placeholder,
+  ltr = false,
+}) => (
+  <div>
+    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+      {label}
+      {required && <span className="text-red-400 mr-1 normal-case not-italic">*</span>}
+    </label>
+ 
+    {type === "select" ? (
+      <select
+        {...register}
+        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <input
+        type={type}
+        {...register}
+        placeholder={placeholder}
+        style={ltr ? { direction: "ltr", textAlign: "left" } : {}}
+        className={`w-full px-3 py-2.5 border rounded-lg text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition ${
+          error ? "border-red-300 bg-red-50/40" : "border-gray-200"
+        }`}
+      />
+    )}
+ 
+    {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+  </div>
+);
+ 
+const ReadOnlySection = ({ title, items }) => (
+  <div className="pt-2">
+    <div className="flex items-center gap-3 mb-3">
+      <span className="text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
+        {title}
+      </span>
+      <div className="flex-1 h-px bg-gray-100" />
+    </div>
+    <div className="grid grid-cols-3 gap-3">
+      {items.map(({ label, value }) => (
+        <div
+          key={label}
+          className="bg-slate-50 rounded-lg px-3.5 py-3 border border-gray-100"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-        </button>
-      </div>
-    ))}
-    
-    <button
-      type="button"
-      onClick={onAdd}
-      className="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-      </svg>
-      افزودن
-    </button>
+          <p className="text-xs text-gray-400 mb-1">{label}</p>
+          <p className="text-sm font-medium text-gray-700">{value || "—"}</p>
+        </div>
+      ))}
+    </div>
   </div>
 );
