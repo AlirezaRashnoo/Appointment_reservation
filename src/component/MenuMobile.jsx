@@ -10,7 +10,7 @@ import { MdLogin } from "react-icons/md";
 import { FaRegUser } from "react-icons/fa6";
 
 function MenuMobile() {
-  const profile = useUserStore((state) => state.profile);
+  const profile = useUserStore((state) => state.user);
 
 
   // گرفتن مسیر پنل داینامیک بر اساس نقش کاربر
