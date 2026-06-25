@@ -32,7 +32,7 @@ export default defineConfig({
       '/api': {
         target: 'https://dentist-reyn.onrender.com',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       }
     }
   }
