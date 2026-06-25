@@ -15,21 +15,23 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css'
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
-import { Pagination, Navigation , Autoplay} from 'swiper/modules';
- 
+import { Pagination, Navigation } from 'swiper/modules';
+
 export default function DentistProfilePage() {
   const { id: dentistId } = useParams();
- 
+
   const [dentist, setDentist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isShowPhonInformation, setIsShowPhonInformation] = useState(false);
-  // در بالای فایل، این state رو اضافه کن:
+  const [procedures, setProcedures] = useState([]);
+  const [proceduresLoading, setProceduresLoading] = useState(false);
+
   const portfolio = dentist?.portfolio ?? [];
- 
+
   useEffect(() => {
     if (!dentistId) return;
- 
+
     const fetchDentist = async () => {
       try {
         const res = await fetch(
@@ -38,7 +40,6 @@ export default function DentistProfilePage() {
         if (!res.ok) throw new Error("خطا در دریافت اطلاعات");
         const json = await res.json();
         console.log(json);
-        
         setDentist(json.data);
       } catch (err) {
         setError(err.message);
@@ -46,22 +47,47 @@ export default function DentistProfilePage() {
         setLoading(false);
       }
     };
- 
+
     fetchDentist();
   }, [dentistId]);
- 
+
+  useEffect(() => {
+    if (!dentist?.user?.id) return;
+
+    const fetchProcedures = async () => {
+      setProceduresLoading(true);
+      try {
+        const res = await fetch(
+          `https://dentist-reyn.onrender.com/api/v1/dentist/procedure/${dentist.user.id}`,
+          {
+            credentials: "include", // معادل withCredentials: true در axios
+          }
+        );
+        if (!res.ok) throw new Error("خطا در دریافت خدمات");
+        const json = await res.json();
+        setProcedures(json.data.filter((p) => p.isActive));
+      } catch (err) {
+        console.error(err.message);
+      } finally {
+        setProceduresLoading(false);
+      }
+    };
+
+    fetchProcedures();
+  }, [dentist?.user?.id]);
+
   if (loading)
     return (
       <div className="text-center mt-14">
         <ClipLoader color="#36d7b7" size={50} />
       </div>
     );
- 
+
   if (error || !dentist)
     return (
       <div className="text-center mt-10 text-red-500">پروفایل یافت نشد</div>
     );
- 
+
   const profile = dentist.user?.profile;
   const fullName =
     profile?.fullName || `${profile?.firstName ?? ""} ${profile?.lastName ?? ""}`.trim();
@@ -69,11 +95,11 @@ export default function DentistProfilePage() {
   const bio = profile?.bio;
   const phone = dentist.user?.phoneNumber;
   const additionalPhones = dentist.additionalPhoneNumbers ?? [];
- 
+
   return (
     <>
       <Header />
- 
+
       <div className="bg-white mt-20">
         <div className="">
           {/* هدر تصویر */}
@@ -99,9 +125,9 @@ export default function DentistProfilePage() {
               </div>
             </div>
           </div>
- 
+
           <div className="w-full absolute bg-white -mt-[30px] rounded-t-[30px] h-[31px]"></div>
- 
+
           <div className="container">
             <div className="space-y-12">
               {/* اطلاعات اصلی */}
@@ -119,7 +145,7 @@ export default function DentistProfilePage() {
                   <p className="text-[13px]">{dentist.address?.shortAddr}</p>
                 </div>
               </div>
- 
+
               {/* آمار */}
               <div className="flex items-center justify-between">
                 <div className="flex flex-col items-center justify-center text-center border-r border-gray-200 w-1/3 h-20 mt-1.5">
@@ -145,14 +171,14 @@ export default function DentistProfilePage() {
                   </span>
                 </div>
               </div>
- 
+
               {/* دکمه‌ها */}
               <div className="grid grid-cols-2 gap-x-4 h-[45px] child:text-white child:rounded-[10px] child:flex child:items-center child:justify-center font-bold">
                 <Button className="bg-green-500">مشاوره آنلاین</Button>
-                <Button href={`${dentistId}/rules`} className="bg-blue-500">نوبت بگیرید</Button>
+                <Button href={`${dentistId}/time-visit`} className="bg-blue-500">نوبت بگیرید</Button>
               </div>
             </div>
- 
+
             {/* نمونه کارها */}
             <div className="flex items-center justify-between py-1 px-3 my-4 h-[75px] select-none rounded-[10px] border border-gray-200">
               <div>
@@ -164,7 +190,6 @@ export default function DentistProfilePage() {
               </svg>
             </div>
 
- 
             {/* اطلاعات تماس */}
             <div className="space-y-3 mb-16">
               <div className="p-[15px] leading-[30px] mt-2.5 rounded-[20px] shadow-Main clear-both">
@@ -189,16 +214,22 @@ export default function DentistProfilePage() {
               </div>
             </div>
 
-
-            {/* <div>
-                <Titer title="خدمات"/>
+            {/* خدمات */}
+            <div>
+              <Titer title="خدمات" />
+              {proceduresLoading ? (
+                <div className="text-center py-4">
+                  <ClipLoader color="#36d7b7" size={30} />
+                </div>
+              ) : (
                 <ul>
-                    {profileDentist.services?.map((service)=>
-                        <Services text={service} iconTik={true}/>
-                    )}
+                  {procedures.map((procedure) => (
+                    <Services key={procedure.id} text={procedure.name} iconTik={true} />
+                  ))}
                 </ul>
-            </div> */}
- 
+              )}
+            </div>
+
             {/* بیو */}
             {bio && (
               <div>
@@ -211,46 +242,31 @@ export default function DentistProfilePage() {
               </div>
             )}
 
+            {/* نمونه کار ها - اسلایدر */}
             <div>
               <div className="mt-12">
-                  <Titer title="نمونه کار ها" />
+                <Titer title="نمونه کار ها" />
               </div>
-                <Swiper
-                    slidesPerView={3}
-                    spaceBetween={15}
-                    breakpoints= {{
-                      640: {
-                        slidesPerView:4
-                      },
-                      768:{
-                        slidesPerView:5
-                      },
-                      1024: {
-                        slidesPerView:6
-                      },
-                      1280: {
-                        slidesPerView:8
-                      }
-                    }}
-                    navigation={false}
-                    modules={[Pagination, Navigation]}
-                    >
-                    
-                  
-                  {
-                      portfolio.map((image) => (
-                        <>
-                          <SwiperSlide>
-                              <img src={image} alt="image" className="w-25 rounded-lg"/>
-                          </SwiperSlide>
-                        </>
-                      ))
-                      
-                    }
-            
-                </Swiper>
+              <Swiper
+                slidesPerView={3}
+                spaceBetween={15}
+                breakpoints={{
+                  640: { slidesPerView: 4 },
+                  768: { slidesPerView: 5 },
+                  1024: { slidesPerView: 6 },
+                  1280: { slidesPerView: 8 },
+                }}
+                navigation={false}
+                modules={[Pagination, Navigation]}
+              >
+                {portfolio.map((image, index) => (
+                  <SwiperSlide key={index}>
+                    <img src={image} alt="image" className="w-25 rounded-lg" />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
             </div>
- 
+
             {/* امتیازات */}
             <div>
               <div className="my-12">
@@ -292,10 +308,10 @@ export default function DentistProfilePage() {
               </div>
             </div>
           </div>
- 
+
           <Footer />
         </div>
- 
+
         {/* پنل تلفن */}
         <div className={`fixed bottom-0 w-full ${isShowPhonInformation ? "" : "hidden"} bg-white shadow-main z-50 h-44 px-3 pt-8 pb-5 rounded-t-2xl space-y-2.5`}>
           <div className="relative h-9 bg-green-400 rounded-3xl">
@@ -317,9 +333,6 @@ export default function DentistProfilePage() {
             </div>
           ))}
         </div>
-
-        
- 
         <div
           className={`${isShowPhonInformation ? "h-full" : ""} fixed top-0 w-full bg-black/60 z-40`}
           onClick={() => setIsShowPhonInformation(!isShowPhonInformation)}
