@@ -11,7 +11,7 @@ import UserDetails from "./pages/Userpanel/AccountDetails"
 
 import DentistPanel from "./pages/dentistpanel/DentistPanel"
 import DentistDetails from "./pages/dentistpanel/AccountDetails"
-import Rules from "./pages/app/Rules"
+// import Rules from "./pages/app/Rules"
 import TimeVisit from "./pages/app/TimeVisit"
 import AppointmentDetails from "./pages/app/AppointmentDetails"
 
@@ -54,7 +54,7 @@ let routes = [
       children: [
         { index: true, element: <Dentist /> },
         { path: "time-visit", element: <TimeVisit /> },
-        { path: "rules", element: <Rules /> },
+        // { path: "rules", element: <Rules /> },
         { path: "appointment-Details/:appointmentId", element: <AppointmentDetails /> },
       ],
     },
