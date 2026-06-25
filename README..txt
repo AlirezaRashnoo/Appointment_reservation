@@ -86,7 +86,7 @@ markdown
 Copy code
 
 ### Notes:
-1. **GitHub username**: Make sure to replace `your-username` with your actual GitHub username in the cloning link.
+1. **GitHub username**: Make sure to replace AlirezaRashnoo with your actual GitHub username in the cloning link.
 2. Feel free to add any additional project details, especially if there are other specific features or configurations you'd like to mention.
 3. If there are any API endpoints or extra services involved, be sure to include instructions for them in the `Usage` or `Technologies Used` section.
 
