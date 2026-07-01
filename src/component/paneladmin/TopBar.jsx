@@ -7,7 +7,7 @@ import { IoMdNotificationsOutline } from "react-icons/io";
 
 function TopBar() {
 
-    const profile = useUserStore((state) => state.user);
+    const profileَAdmin = useUserStore((state) => state.user);
 
     
     
@@ -23,12 +23,12 @@ function TopBar() {
                 </div>
                 <div className="flex items-center gap-x-3">
                     <p>
-                        {profile?.profile?.fullName} خوش آمدید!
+                         خوش آمدید! {profileَAdmin?.profile?.fullName}
                         {/* خوش آمدید */}
                     </p>
-                    {profile?.profile?.avatar_url?
+                    {profileَAdmin?.profile?.avatar_url?
                     (
-                        <img src={profile?.profile?.avatar_url} alt="img100" className="size-10 rounded-full cursor-pointer ml-2"/>
+                        <img src={profileَAdmin?.profile?.avatar_url} alt="img100" className="size-10 rounded-full cursor-pointer ml-2"/>
                     ):(
                         <FaCircleUser className="size-10 fill-gray-500"/>
                     )
