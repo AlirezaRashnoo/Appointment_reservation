@@ -17,19 +17,6 @@ function ProfileHeader({children}) {
 
 
 
-  // <
-  // const handleLogout = async () => {
-  //   try {
-  //     const { error } = await supabase.auth.signOut();
-  //     if (error) throw error;
-
-  //     clearProfile(); // پاک کردن اطلاعات کاربر از Zustand
-  //     navigate("/"); // هدایت به صفحه لاگین (یا صفحه اصلی)
-  //   } catch (err) {
-  //     console.error("خطا در خروج از حساب:", err.message);
-  //     alert("مشکلی در خروج از حساب رخ داد");
-  //   }
-  // };
 
   return (
     <>
@@ -109,7 +96,7 @@ function ProfileHeader({children}) {
 
           {/* Name */}
           <div>
-            <p className="mb-2 text-[17px] font-semibold">{user?.profile?.fullName || "بدون نام"}</p>
+            <p className="mb-2 text-[17px] font-semibold">{user?.profile?.firstName} {user?.profile?.lastName}</p>
             <p className="mb-2 text-sm">{user?.phoneNumber || "شماره‌ای وارد نشده"}</p>
           </div>
           
