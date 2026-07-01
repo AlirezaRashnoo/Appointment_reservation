@@ -20,15 +20,20 @@ function DentistPanel() {
                         روزها/ساعات کاری
                     </MenuLink>
 
+                    <MenuLink href="/dentist-panel/schedulesettings" className="flex items-center gap-x-5">
+                        <svg className="size-6 text-white">...</svg>
+                       خدمات
+                    </MenuLink>
+
                     <MenuLink href="/dentist-panel/details" className="flex items-center gap-x-5">
                         <svg className="size-6 text-white">...</svg>
                         اطلاعات حساب کاربری
                     </MenuLink>
 
-                    <MenuLink href="/faq" className="flex items-center gap-x-5">
+                    {/* <MenuLink href="/faq" className="flex items-center gap-x-5">
                         <svg className="size-6 text-white">...</svg>
                         سوالات رایج کاربران
-                    </MenuLink>
+                    </MenuLink> */}
                 </ProfileHeader>
                 <Outlet />
             </div>
