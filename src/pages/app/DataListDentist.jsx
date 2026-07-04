@@ -11,6 +11,7 @@ import Services from "@/component/dentist/Services";
 import { FaCircleUser } from "react-icons/fa6";
 import ClipLoader from "react-spinners/ClipLoader";
 import { Swiper, SwiperSlide } from 'swiper/react';
+import Cookies from "js-cookie";
 
 import 'swiper/css'
 import 'swiper/css/pagination';
@@ -26,8 +27,27 @@ export default function DentistProfilePage() {
   const [isShowPhonInformation, setIsShowPhonInformation] = useState(false);
   const [procedures, setProcedures] = useState([]);
   const [proceduresLoading, setProceduresLoading] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [activeReply, setActiveReply] = useState(null);
+  const [replyText, setReplyText] = useState("");
 
   const portfolio = dentist?.portfolio ?? [];
+
+
+  const getHeaders = () => {
+  const csrfToken = Cookies.get("csrf_token");
+
+  return {
+    "Content-Type": "application/json",
+    ...(csrfToken && {
+      "x-csrf-token": csrfToken,
+    }),
+  };
+};
+
 
   useEffect(() => {
     if (!dentistId) return;
@@ -75,6 +95,102 @@ export default function DentistProfilePage() {
 
     fetchProcedures();
   }, [dentist?.user?.id]);
+
+
+
+  useEffect(() => {
+  if (!dentist?.user?.id) return;
+
+  const fetchReviews = async () => {
+    setReviewsLoading(true);
+
+    try {
+      const res = await fetch(
+        `https://dentist-reyn.onrender.com/api/v1/dentists/reviews/${dentist.user.id}`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) throw new Error("خطا در دریافت نظرات");
+
+      const json = await res.json();
+      setReviews(json.data || []);
+    } catch (err) {
+      console.error(err.message);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  fetchReviews();
+}, [dentist?.user?.id]);
+
+  const handleSubmitReview = async () => {
+  if (!reviewText.trim()) return;
+
+  try {
+    const res = await fetch(
+      `https://dentist-reyn.onrender.com/api/v1/dentists/reviews/${dentist.user.id}`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          comment: reviewText,
+          rating: reviewRating,
+        }),
+      }
+    );
+
+    const json = await res.json();
+    setReviews((prev) => [json.data, ...prev]);
+    setReviewText("");
+    setReviewRating(5);
+  } catch (err) {
+    console.error(err.message);
+  }
+};
+
+const handleReplyReview = async (reviewId) => {
+  if (!replyText.trim()) return;
+
+  try {
+    const res = await fetch(
+      `https://dentist-reyn.onrender.com/api/v1/dentists/reviews/${dentist.user.id}`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          comment: replyText,
+          rating: 1,
+          reply: reviewId,
+        }),
+      }
+    );
+
+    if (!res.ok) throw new Error("ثبت پاسخ ناموفق بود");
+
+    const json = await res.json();
+
+    setReviews((prev) =>
+      prev.map((review) =>
+        review.id === reviewId
+          ? {
+              ...review,
+              reply: json.data,
+            }
+          : review
+      )
+    );
+
+    setReplyText("");
+    setActiveReply(null);
+  } catch (err) {
+    console.error(err.message);
+  }
+};
 
   if (loading)
     return (
@@ -307,6 +423,148 @@ export default function DentistProfilePage() {
                 </div>
               </div>
             </div>
+
+            <div className="mt-10 space-y-6">
+  {/* فرم ثبت نظر */}
+  <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+    <h3 className="text-sm font-bold mb-4 text-gray-800">
+      تجربه خودتو ثبت کن
+    </h3>
+
+    <textarea
+      value={reviewText}
+      onChange={(e) => setReviewText(e.target.value)}
+      placeholder="تجربه‌ات از این دکتر چطور بود؟"
+      className="w-full min-h-[120px] resize-none border border-gray-200 rounded-xl p-4 text-sm outline-none focus:border-blue-500 transition"
+    />
+
+    <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center gap-2">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            onClick={() => setReviewRating(star)}
+            className={`text-2xl transition ${
+              reviewRating >= star ? "text-yellow-400" : "text-gray-300"
+            }`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+
+      <Button
+        onClick={handleSubmitReview}
+        className="bg-blue-500 text-white px-5 py-2 rounded-xl"
+      >
+        ثبت نظر
+      </Button>
+    </div>
+  </div>
+
+  {/* لیست نظرات */}
+  <div className="space-y-4">
+    {reviewsLoading ? (
+      <div className="text-center py-6 text-gray-400">
+        در حال دریافت نظرات...
+      </div>
+    ) : reviews.length ? (
+      reviews.map((review) => (
+        <div
+          key={review.id}
+          className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm"
+        >
+          {/* هدر کامنت */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="size-11 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                {review?.user?.profile?.avatar ? (
+                  <img
+                    src={review?.user?.profile?.avatar}
+                    alt="avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <FaCircleUser className="size-8 text-gray-400" />
+                )}
+              </div>
+
+              <div>
+                <p className="font-bold text-sm text-gray-800">
+                  {review?.user?.profile?.fullName || "کاربر"}
+                </p>
+                <div className="flex items-center gap-1 text-yellow-400 text-sm">
+                  {"★".repeat(review.rating)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* متن کامنت */}
+          <p className="text-sm leading-7 text-gray-600">
+            {review.comment}
+          </p>
+
+          {/* reply */}
+          {review.reply && (
+            <div className="mt-4 bg-blue-50 border-r-4 border-blue-500 rounded-xl p-3">
+              <p className="text-xs text-blue-500 font-bold mb-1">
+                پاسخ پزشک
+              </p>
+              <p className="text-sm text-gray-700">
+                {review.reply.comment}
+              </p>
+            </div>
+          )}
+
+          {/* actions */}
+          <div className="mt-4">
+  {activeReply === review.id ? (
+    <div className="space-y-3 bg-gray-50 rounded-xl p-3 border border-gray-200">
+      <textarea
+        value={replyText}
+        onChange={(e) => setReplyText(e.target.value)}
+        placeholder="پاسخ خود را بنویسید..."
+        className="w-full min-h-[90px] resize-none border border-gray-200 rounded-xl p-3 text-sm outline-none focus:border-blue-500"
+      />
+
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={() => {
+            setActiveReply(null);
+            setReplyText("");
+          }}
+          className="px-4 py-2 text-sm rounded-lg border border-gray-300"
+        >
+          انصراف
+        </button>
+
+        <button
+          onClick={() => handleReplyReview(review.id)}
+          className="px-4 py-2 text-sm rounded-lg bg-blue-500 text-white"
+        >
+          ارسال پاسخ
+        </button>
+      </div>
+    </div>
+  ) : (
+    <button
+      onClick={() => setActiveReply(review.id)}
+      className="text-sm text-blue-500 font-medium"
+    >
+      پاسخ دادن
+    </button>
+  )}
+</div>
+        </div>
+      ))
+    ) : (
+      <div className="bg-gray-50 border border-dashed border-gray-300 rounded-2xl py-8 text-center text-gray-400 text-sm">
+        هنوز نظری ثبت نشده
+      </div>
+    )}
+  </div>
+</div>
           </div>
 
           <Footer />
@@ -341,4 +599,32 @@ export default function DentistProfilePage() {
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

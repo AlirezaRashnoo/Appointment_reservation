@@ -9,9 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-// ---------------------
-// Axios instance
-// ---------------------
+
 const api = axios.create({
   baseURL: 'https://dentist-reyn.onrender.com/api/v1',
   withCredentials: true,
@@ -66,7 +64,7 @@ const fetchCsrfToken = async () => {
   try {
     const response = await api.get('/auth/csrf-token');
     
-    const token = response.data?.data?.csrfToken; // 👈 دقیقا از data گرفته میشه
+    const token = response.data?.data?.csrfToken; 
     
     if (token) {
       console.log('🔐 New CSRF token fetched:', token);
