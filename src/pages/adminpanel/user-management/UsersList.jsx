@@ -3,7 +3,7 @@ import { FaEye, FaTrashAlt, FaUser } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Button from '@/component/Button';
 import { FaRegEdit } from "react-icons/fa";
-
+import Cookies from "js-cookie";
 // سرویس API برای ارتباط با بک‌اند
 import apiService from '@/features/api';
 
@@ -63,11 +63,20 @@ const fetchUsers = async () => {
 // تابع حذف کاربر از طریق API
 const deleteUser = async (userId) => {
   try {
-    const response = await apiService.delete(`/users/${userId}`);
+    const csrfToken = Cookies.get("csrf_token");
+
+    const response = await apiService.delete(`/users/${userId}`, {
+      headers: {
+        "X-CSRF-Token": csrfToken,
+      },
+    });
+
     return response.data;
   } catch (error) {
-    console.error('Error deleting user:', error);
-    throw new Error(error.response?.data?.message || 'خطا در حذف کاربر');
+    console.error("Error deleting user:", error);
+    throw new Error(
+      error.response?.data?.message || "خطا در حذف کاربر"
+    );
   }
 };
 
@@ -90,6 +99,8 @@ export default function UsersList() {
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
   });
+  
+
 
   // Mutation برای حذف کاربر
   const deleteUserMutation = useMutation({
@@ -99,6 +110,22 @@ export default function UsersList() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
+
+
+
+  const handleDeleteUser = async (user) => {
+  const confirmed = window.confirm(
+    `آیا از حذف کاربر با شماره "${user.phoneNumber}" مطمئن هستید؟`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await deleteUserMutation.mutateAsync(user.id);
+  } catch (error) {
+    alert(error.message);
+  }
+};
 
   // فیلتر کردن کاربران با useMemo برای بهینه‌سازی
   const filteredUsers = useMemo(() => {
@@ -119,15 +146,7 @@ export default function UsersList() {
     });
   }, [users, search, filterRole, filterStatus]);
 
-  const handleDeleteUser = async (user) => {
-    if (window.confirm(`آیا از حذف کاربر با شماره "${user.phoneNumber}" مطمئن هستید؟`)) {
-      try {
-        await deleteUserMutation.mutateAsync(user.id);
-      } catch (error) {
-        alert(`خطا در حذف کاربر: ${error.message}`);
-      }
-    }
-  };
+ 
 
   // نمایش loading
   if (isLoading) {
@@ -255,7 +274,7 @@ export default function UsersList() {
                   <div className="flex gap-2">
                     {/* فقط دکمه حذف باقی می‌ماند */}
                     <button
-                      className="btn btn-sm btn-outline btn-error"
+                      className="bg-red-500 p-2 rounded-md text-white hover:bg-red-600 flex items-center justify-center gap-1"
                       onClick={() => handleDeleteUser(user)}
                       disabled={deleteUserMutation.isPending}
                     >
@@ -268,33 +287,6 @@ export default function UsersList() {
                     </button>
                   </div>
                   
-                  {/* مودال جزئیات کاربر */}
-                  <dialog id={`user_modal_${user.id}`} className="modal">
-                    <div className="modal-box">
-                      <h3 className="font-bold text-lg mb-4">جزئیات کاربر</h3>
-                      <div className="space-y-3">
-                        <p><strong>شناسه:</strong> {user.id}</p>
-                        <p><strong>شماره تلفن:</strong> {user.phoneNumber}</p>
-                        <p><strong>نقش:</strong> 
-                          <span className={`mr-2 badge ${roleColors[user.role] || 'badge-neutral'}`}>
-                            {roleLabels[user.role] || 'نامشخص'}
-                          </span>
-                        </p>
-                        <p><strong>وضعیت:</strong> 
-                          <span className={`mr-2 badge ${statusColors[user.status] || 'badge-neutral'}`}>
-                            {statusLabels[user.status] || user.status}
-                          </span>
-                        </p>
-                        <p><strong>تاریخ ایجاد:</strong> {formatDate(user.createdAt)}</p>
-                        <p><strong>آخرین تغییر:</strong> {formatDate(user.modifiedAt)}</p>
-                      </div>
-                      <div className="modal-action">
-                        <form method="dialog">
-                          <button className="btn">بستن</button>
-                        </form>
-                      </div>
-                    </div>
-                  </dialog>
                 </td>
               </tr>
             ))}
