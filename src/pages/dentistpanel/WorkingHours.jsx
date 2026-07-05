@@ -2,13 +2,9 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-// 👇 استور zustand خودتان را همین‌جا import کنید و مسیر را مطابق پروژه‌تان اصلاح کنید
 import { useUserStore } from "@/stores/useUserStore";
 
-/* ============================================================================
-   Axios client
-   نکته: baseUrl از قبل شامل /api/v1 است، پس مسیرها فقط از /dentist/... شروع می‌شوند.
-============================================================================ */
+
 const BASE_URL =
   import.meta.env?.VITE_API_BASE_URL || "https://dentist-reyn.onrender.com/api/v1";
 
@@ -71,11 +67,7 @@ const deleteDentistAvailability = async (availabilityId) => {
   return data;
 };
 
-/* ============================================================================
-   ثابت‌ها
-============================================================================ */
-// dayOfWeek مطابق قرارداد استاندارد جاوااسکریپت: 0=یکشنبه ... 6=شنبه
-// ترتیب نمایش از شنبه شروع می‌شود (هفته‌ی ایرانی)
+
 const WEEK_ORDER = [
   { value: 6, label: "شنبه" },
   { value: 0, label: "یکشنبه" },
@@ -89,7 +81,7 @@ const WEEK_ORDER = [
 const EMPTY_FORM = { dayOfWeek: 6, startTime: "09:00", endTime: "13:00" };
 
 /* ============================================================================
-   آیکون‌ها
+  Icons
 ============================================================================ */
 function EditIcon(props) {
   return (
@@ -127,10 +119,7 @@ function PlusIcon(props) {
   );
 }
 
-/* ============================================================================
-   کامپوننت اصلی
-   dentistId از استور zustand خوانده می‌شود (نه از props)
-============================================================================ */
+
 export default function DentistAvailability() {
   const dentistId = useUserStore((state) => state.user?.id);
 
@@ -178,7 +167,7 @@ export default function DentistAvailability() {
     return map;
   }, [availabilities]);
 
-  /* ------------------------------ مودال ------------------------------ */
+  /* ------------------------------ Modal-------------------------- */
   const openCreateModal = () => {
     setEditingSlot(null);
     setForm(EMPTY_FORM);
@@ -244,7 +233,7 @@ export default function DentistAvailability() {
     }
   };
 
-  /* ------------------------------ حذف ------------------------------ */
+  /* ------------------------------ Delete-------------------------- */
   const confirmDelete = async (id) => {
     setDeleteError("");
     setMutating(true);
@@ -259,7 +248,6 @@ export default function DentistAvailability() {
     }
   };
 
-  /* ------------------------------ رندر ------------------------------ */
   return (
     <div dir="rtl" className="mx-auto w-full max-w-2xl px-4 sm:px-0 mt-12">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -365,7 +353,6 @@ export default function DentistAvailability() {
         </div>
       )}
 
-      {/* -------------------------- مودال ایجاد/ویرایش -------------------------- */}
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
