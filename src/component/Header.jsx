@@ -9,9 +9,6 @@ import { FiUser } from "react-icons/fi";
 import { MdLogin } from "react-icons/md";
 import { FaRegUser } from "react-icons/fa6";
 
-import { IoMdBook } from "react-icons/io";
-import { FcAdvertising } from "react-icons/fc";
-
 
 
 function Header() {
@@ -80,7 +77,6 @@ function Header() {
                             <div className="space-y-8">
                                 <div className="flex items-center justify-between text-black">
                                     <p className="text-lg">جستجو</p>
-                                    {/* <IoCloseOutline className="size-6" onClick={()=>setIsShowSearchBox(!isShowSearchBox)}/> */}
                                     <Button onClick={()=>setIsShowSearchBox(false)}>
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-7 text-black/50">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -255,17 +251,11 @@ function Header() {
                     </MenuLink>
                 </div>
             </div>
-
-
-            {/* menu bottom/mobile */}
             
         </>
      );
 
 
-    // return(
-    //     <div>Header menu</div>
-    // )
 }
 
 export default Header;

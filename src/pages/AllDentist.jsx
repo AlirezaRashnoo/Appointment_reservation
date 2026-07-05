@@ -9,7 +9,6 @@ import Footer from "@/component/Footer";
 import MenuMobile from "@/component/MenuMobile";
 import { useState, useMemo } from "react";
 
-// کانفیگ axios
 const api = axios.create({
   baseURL: 'https://dentist-reyn.onrender.com',
   timeout: 10000,
@@ -18,7 +17,6 @@ const api = axios.create({
   },
 });
 
-// کامپوننت لودینگ
 const DentistSkeleton = () => (
   <VipCart>
     <div className="animate-pulse">
@@ -45,7 +43,6 @@ const DentistSkeleton = () => (
   </VipCart>
 );
 
-// کامپوننت خطا
 const ErrorState = ({ error, onRetry }) => (
   <div className="text-center py-12 px-4">
     <div className="bg-red-50 rounded-2xl p-8 max-w-md mx-auto">
@@ -66,19 +63,16 @@ const ErrorState = ({ error, onRetry }) => (
   </div>
 );
 
-// تابع دریافت دیتا
 const fetchDentists = async () => {
   try {
     const response = await api.get('/api/v1/dentist/all?limit=10&page=1&orderBy=averageRating');
     return response.data;
   } catch (error) {
-    // لاگ خطا برای دیباگ
     console.error('Error fetching dentists:', error);
     throw error;
   }
 };
 
-// فرمت‌کننده نام دندانپزشک
 const formatDentistName = (dentist) => {
   if (dentist.firstName || dentist.lastName) {
     return `${dentist.firstName || ''} ${dentist.lastName || ''}`.trim();
@@ -86,7 +80,6 @@ const formatDentistName = (dentist) => {
   return 'دندانپزشک';
 };
 
-// فرمت‌کننده تخصص
 const formatSpecialty = (dentist) => {
   return dentist.specialization || dentist.occupation || 'عمومی';
 };
@@ -104,8 +97,8 @@ export default function AllDentist() {
   } = useQuery({
     queryKey: ['dentists'],
     queryFn: fetchDentists,
-    staleTime: 5 * 60 * 1000, // 5 دقیقه
-    gcTime: 10 * 60 * 1000, // 10 دقیقه
+    staleTime: 5 * 60 * 1000, 
+    gcTime: 10 * 60 * 1000, 
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     onError: (err) => {
@@ -113,7 +106,6 @@ export default function AllDentist() {
     },
   });
 
-  // استفاده از useMemo برای بهینه‌سازی
   const dentists = useMemo(() => {
     return data?.data?.dentists || [];
   }, [data]);
@@ -122,13 +114,11 @@ export default function AllDentist() {
     return data?.data?.total || 0;
   }, [data]);
 
-  // هندلر ریترای
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
     refetch();
   };
 
-  // لودینگ اسکلتون
   if (isLoading) {
     return (
       <>
@@ -190,19 +180,7 @@ export default function AllDentist() {
                 <p className="text-sm">لیست دندان پزشکان</p>
               </div>
               
-              {/* دکمه رفرش (اختیاری) */}
-              {!isFetching && (
-                <button 
-                  onClick={() => refetch()}
-                  className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
-                  disabled={isFetching}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span>به‌روزرسانی</span>
-                </button>
-              )}
+           
             </div>
             <p className="text-[11px] text-gray-400 pt-2">
               {new Intl.NumberFormat('fa-IR').format(totalCount)} دندانپزشک
@@ -210,7 +188,6 @@ export default function AllDentist() {
             </p>
           </div>
 
-          {/* لیست دندانپزشکان */}
           {dentists.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-2xl">
               <p className="text-gray-500">هیچ دندانپزشکی یافت نشد</p>
@@ -220,7 +197,6 @@ export default function AllDentist() {
               {dentists.map((dentist) => (
                 <VipCart key={dentist.userId}>
                   <a href={`/dentist/${dentist.userId}`}>
-                    {/* بخش بالایی کارت */}
                     <div className="flex items-center gap-x-5 px-3 pt-2 mb-4">
                       {dentist?.avatar ? (
                         <div className="relative w-[115px] h-[115px] flex-shrink-0">
@@ -268,7 +244,6 @@ export default function AllDentist() {
                       </div>
                     </div>
 
-                    {/* بخش پایینی کارت */}
                     <div className="bg-blue-50 h-16 p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-x-2">

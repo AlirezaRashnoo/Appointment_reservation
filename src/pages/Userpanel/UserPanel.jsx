@@ -1,5 +1,4 @@
 import React from "react";
-// import HeaderProfiles from "../../component/ProfileHeader";
 import { Outlet } from "react-router-dom";
 import ProfileHeader from "../../component/ProfileHeader";
 import MenuLink from "@/component/MenuLink";
@@ -9,9 +8,7 @@ import MenuLink from "@/component/MenuLink";
 function UserPanel() {
     return ( 
         <>
-            {/* <HeaderProfiles /> */}
             <div className="bg-blue-50">
-                {/* <UserPanelHeader/> */}
                 <ProfileHeader>
                     <MenuLink href="appointments" className="flex items-center gap-x-5">
                         <svg className="size-6 text-white">...</svg>

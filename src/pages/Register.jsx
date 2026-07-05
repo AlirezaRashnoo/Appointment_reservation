@@ -57,19 +57,14 @@ export default function RegisterUser() {
   const mutation = useMutation({
     mutationFn: registerUser,
     onSuccess: (data) => {
-      // بررسی موفقیت سرور (مطمئن بشیم که OTP با موفقیت ارسال شده است)
       if (data.code === "OTP_SENT_SUCCESS") {
         Swal.fire("موفقیت!", "کد تایید به شماره شما ارسال شد.", "success");
-        // navigate("/verify-otp");  // هدایت به صفحه تایید OTP
-        // console.log("Phone number to be sent:", data.credentials.phoneNumber);
-        // localStorage.setItem("phone", data.phoneNumber);
         navigate("/verify-otp")
       } else {
         Swal.fire("خطا", "مشکلی در ارسال کد تایید پیش آمده است.", "error");
       }
     },
     onError: (err) => {
-        // بررسی ارورهای سرور
         Swal.fire("خطا", err.response?.data?.message || "ثبت نام با مشکل مواجه شد.", "error");
     },
   });

@@ -3,7 +3,6 @@ import Button from "./Button";
 import { IoMdBook } from "react-icons/io";
 import { FcAdvertising } from "react-icons/fc";
 import { useUserStore } from "@/stores/useUserStore";
-// import { getDashboardPath, dashboardPaths } from "@/utils/routeHelpers"; // مسیر را اصلاح کن متناسب با ساختار پروژه
 import getDashboardPath from "@/utils/routeHelpers";
 import { FiUser } from "react-icons/fi";
 import { MdLogin } from "react-icons/md";
@@ -13,7 +12,6 @@ function MenuMobile() {
   const profile = useUserStore((state) => state.user);
 
 
-  // گرفتن مسیر پنل داینامیک بر اساس نقش کاربر
   const dashboardLink =  profile?.status=="active" ? getDashboardPath(profile.role) : "/login";
 
 const isDentist = profile?.role === "dentist";
@@ -47,7 +45,6 @@ const label = isDentist && isActived ? "تبلیغات" : "ثبت دندان پ�
               <Button className="flex flex-col items-center gap-y-1"
                   onClick={handleClick}
               >
-                 {/* onClick={handleClick} */}
                  <FaRegUser />
                 حساب کاربری
               </Button>
@@ -68,7 +65,6 @@ const label = isDentist && isActived ? "تبلیغات" : "ثبت دندان پ�
               </Button>
             )}
           </li>
-          {/* بقیه لینک‌ها */}
           <li>
             <Button href="/allDentist" className="flex flex-col items-center gap-y-1">
                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
@@ -97,7 +93,6 @@ const label = isDentist && isActived ? "تبلیغات" : "ثبت دندان پ�
 
             {profile?.status=="pending"?(
               <Button
-                  // href={href}
                   
                   onClick={handleClick}
                   className="flex flex-col items-center gap-y-1"
@@ -109,7 +104,6 @@ const label = isDentist && isActived ? "تبلیغات" : "ثبت دندان پ�
               <Button
                   href={href}
                   
-                  // onClick={handleClick}
                   className="flex flex-col items-center gap-y-1"
                 >
                   <FcAdvertising className="size-6 text-slate-500 fill-slate-500" />

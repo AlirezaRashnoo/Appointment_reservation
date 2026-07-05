@@ -83,12 +83,6 @@ const AppointmentsUser = () => {
           <h1 className="text-4xl font-bold text-gray-900">رزروهای اخیر</h1>
           <p className="text-gray-600 mt-2 text-lg">مجموع {total} نوبت ثبت شده</p>
         </div>
-        {/* <button
-          onClick={() => refetch()}
-          className="flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl transition-all active:scale-95 shadow-lg shadow-teal-200"
-        >
-          🔄 به‌روزرسانی
-        </button> */}
       </div>
 
       {reservations.length === 0 ? (
@@ -168,12 +162,6 @@ const AppointmentsUser = () => {
                     )}
                   </div>
                 </div>
-
-                {/* Footer */}
-                {/* <div className="border-t border-gray-100 bg-gray-50 px-6 py-4 text-xs text-gray-500 flex justify-between">
-                  <span>شناسه: {res.id.slice(0, 8)}...</span>
-                  <span>ثبت توسط: {res.reservedBy?.id?.slice(0, 8)}...</span>
-                </div> */}
               </div>
             );
           })}

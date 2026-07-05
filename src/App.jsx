@@ -119,28 +119,21 @@ function App() {
   // Save User
   // ---------------------
   useEffect(() => {
-
     if (data) {
-
       console.log(
         '✅ Saving user to store:',
         data
       );
-
       setUser(data);
-
     } else if (
       error ||
       (isSuccess && !data)
     ) {
-
       console.log(
         '❌ No user data'
       );
-
       clear();
     }
-
   }, [
     data,
     error,

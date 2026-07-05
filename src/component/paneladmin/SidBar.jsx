@@ -1,17 +1,13 @@
 import React, { useState } from "react";
 import MenuLink from "../MenuLink";
-import { Link, useNavigate } from "react-router-dom";
-import { useUserStore } from "@/stores/useUserStore";
 import Button from "../Button";
 import { useLogout } from "@/hooks/useLogout";
-// import supabase from "@/api/supabase";
 import { IoIosArrowForward } from "react-icons/io";
+
 function SidBar() {
 
 
     const [showSubLinks, setShowSubLinks] = useState(false);
-
-    const navigate = useNavigate();
     const logout = useLogout();
 
 
@@ -72,24 +68,6 @@ function SidBar() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                         </svg>
                     کامنت ها
-                    </MenuLink>
-                    <MenuLink  to="menous" className="flex items-center gap-x-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0-5.571 3-5.571-3" />
-                        </svg>
-                        منو ها
-                    </MenuLink>
-                    <MenuLink  to="groupy" className="flex items-center gap-x-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-                        </svg>
-                    دسته بندی ها
-                    </MenuLink>
-                    <MenuLink  to="#" className="flex items-center gap-x-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-                        </svg>
-                    تبلیغات دندان پزشک
                     </MenuLink>
                     <Button type="button" className="flex items-center gap-x-3" onClick={logout}>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">

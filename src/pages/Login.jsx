@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -42,16 +41,12 @@ const loginUser = async (data) => {
     payload,
     { 
       headers: { "Content-Type": "application/json" },
-      withCredentials: true // همچنان نگهش میداریم شاید بعداً درست شد
+      withCredentials: true 
     }
   );
 
   console.log("📨 Response headers:", response.headers);
   console.log("📦 Response body:", response.data);
-
-  // ========== ذخیره توکن از هر جایی که هست ==========
-  
- 
 
   return response.data;
 };
@@ -85,11 +80,6 @@ export default function Login() {
   const mutation = useMutation({
     mutationFn: loginUser,
     
-
-
-
-
-
 // داخل onSuccess mutation
 onSuccess: (data) => {
   console.log("✅ Login successful:", data);
@@ -98,15 +88,8 @@ onSuccess: (data) => {
   const csrfToken = data?.data?.csrfToken;
 
   if (csrfToken) {
-    // ذخیره در state (اختیاری)
     setCsrfToken(csrfToken);
 
-    // ذخیره در کوکی
-    // Cookies.set("csrf_token", csrfToken, {
-    //   expires: 1, // 1 روز اعتبار
-    //   secure: true, // فقط https
-    //   sameSite: "Strict", // جلوگیری از CSRF
-    // });
     Cookies.set('csrf_token', csrfToken, { path: '/', expires: 1/24 });
 
   }
@@ -119,20 +102,12 @@ onSuccess: (data) => {
     showConfirmButton: false
   });
   setTimeout(() => {
-    // navigate("/");
     window.location="/";
   }, 1000);
   
 },
 
 
-   
-
-
-
-
-
-    
     onError: (error) => {
       console.log("❌ Login error:", error.response?.data || error.message);
       

@@ -9,7 +9,6 @@ import {
   FaClock
 } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// import supabase from '@/api/supabase';
 
 export default function CommentsList() {
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -17,7 +16,6 @@ export default function CommentsList() {
   const [replyContent, setReplyContent] = useState('');
   const queryClient = useQueryClient();
 
-  // دریافت کامنت‌ها از سوپابیس
   const { data: comments = [], isLoading, error } = useQuery({
     queryKey: ['admin-comments'],
     queryFn: async () => {
@@ -59,11 +57,6 @@ export default function CommentsList() {
       const updateData = { 
         status: status
       };
-
-      // اگر وضعیت replied است، تاریخ رو هم آپدیت کن
-      // if (status === 'replied') {
-      //   updateData.replied_at = new Date().toISOString();
-      // }
 
       const { error } = await supabase
         .from('comments')
@@ -157,12 +150,7 @@ export default function CommentsList() {
       count: comments.filter(c => c.status === 'approved').length, 
       icon: FaCheck 
     },
-    // { 
-    //   id: 'replied', 
-    //   label: 'پاسخ داده شده', 
-    //   count: comments.filter(c => c.status === 'replied').length, 
-    //   icon: FaReply 
-    // }
+
   ];
 
   const getStatusBadge = (status) => {
@@ -425,12 +413,6 @@ export default function CommentsList() {
                       <FaReply />
                       پاسخ
                     </button>
-                    {/* <button 
-                      className="btn btn-ghost btn-sm gap-2"
-                      onClick={() => handleAction(comment.id, 'view')}
-                    >
-                      <FaEye />
-                    </button> */}
                     <button 
                       className="btn btn-ghost btn-sm gap-2 text-error hover:bg-error/20"
                       onClick={() => handleAction(comment.id, 'delete')}

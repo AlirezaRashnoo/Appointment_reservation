@@ -5,7 +5,6 @@ import Button from "./Button";
 function Footer() {
     const scrollTop = ()=>{
         console.log("top broo")
-        // scrolTop(0,0)
         scrollTo(0,0)
     }
     return ( 

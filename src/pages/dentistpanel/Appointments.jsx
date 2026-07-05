@@ -119,7 +119,6 @@ function AcceptButton({ onClick, loading }) {
 // ─── Mobile Card ──────────────────────────────────────────────────────────────
 
 function extractPatient(r) {
-  // reservedBy = بیماری که نوبت گرفته
   const patient = r.reservedBy ?? {};
   const profile = patient?.profile ?? {};
   return {
@@ -314,20 +313,6 @@ export default function ReservationsDashboard() {
 
   useEffect(() => { fetchReservations(); }, [fetchReservations]);
 
-//   const handleAccept = async (id) => {
-//   try {
-//     await axiosInstance.patch("/reservations/accept");
-    
-//     setReservations(prev => 
-//       prev.map(r => r.id === id ? { ...r, status: "accepted" } : r)
-//     );
-    
-//     showToast("نوبت با موفقیت تأیید شد ✓");
-//   } catch (err) {
-//     showToast(err.response?.data?.message || "خطا در تأیید نوبت", "error");
-//     throw err;
-//   }
-// };
 
 
 

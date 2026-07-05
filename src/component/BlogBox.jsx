@@ -5,7 +5,6 @@ import Button from "../component/Button";
 function BlogBox() {
     return ( 
         <div className="bg-white h-[320px] py-3 px-[15px] border border-secoundColor rounded-xl shadow-Main">
-            {/* <FaCircleUser/> */}
             <div className="flex items-center justify-between mb-2 text-gray-400">
                 <div className="flex items-center gap-x-1">
                     <FaCircleUser className="size-5 text-gray-500"/>

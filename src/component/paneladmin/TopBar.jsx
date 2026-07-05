@@ -8,14 +8,9 @@ import { IoMdNotificationsOutline } from "react-icons/io";
 function TopBar() {
 
     const profileَAdmin = useUserStore((state) => state.user);
-
     
-    
-
-
     return ( 
         <div className="fixed left-0 w-4/5 top-0 h-16 bg-white shadow-Main z-50">
-            {/* <div>Salam</div> */}
             <div className="flex justify-between items-center h-full px-3">
                 <div className="flex items-center gap-x-3">
                     <input type="text" className="w-48 h-7 px-2 outline-none bg-blue-100 rounded-md text-xs" placeholder="جستجو..."/>
@@ -24,7 +19,6 @@ function TopBar() {
                 <div className="flex items-center gap-x-3">
                     <p>
                          خوش آمدید! {profileَAdmin?.profile?.fullName}
-                        {/* خوش آمدید */}
                     </p>
                     {profileَAdmin?.profile?.avatar_url?
                     (
@@ -33,7 +27,6 @@ function TopBar() {
                         <FaCircleUser className="size-10 fill-gray-500"/>
                     )
                     }
-                    {/* عکس پروفایل */}
                 </div>
             </div>
         </div>

@@ -19,17 +19,9 @@ const schema = z.object({
   avatar: z.string().optional().nullable(),
 });
 
-// گرفتن csrf_token از cookie به صورت مطمئن
-// const getCsrfToken = () => {
-//   const match = document.cookie.match(/(^|;)\\s*csrf_token=([^;]+)/);
-//   return match ? match[2] : null;
-// };
-
 function AccountDetails() {
   const queryClient = useQueryClient();
-  const { user, setUser } = useUserStore();
-  // const user = useUserStore((state) => state.user);
-  
+  const { user, setUser } = useUserStore();  
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const csrfToken = Cookies.get("csrf_token")
@@ -52,7 +44,6 @@ function AccountDetails() {
     },
   });
 
-  // پر کردن فرم از store
   useEffect(() => {
     console.log(csrfToken);
     console.log(user?.profile?.avatar,"یبتردیبخکرخیب");
@@ -67,10 +58,9 @@ function AccountDetails() {
     });
   }, [user, reset]);
 
-  // ویرایش پروفایل
   const mutation = useMutation({
     mutationFn: async (updatedData) => {
-      console.log("CSRF token sent:", csrfToken); // بررسی در console
+      console.log("CSRF token sent:", csrfToken); 
 
       const response = await fetch(`${API_BASE_URL}/users/me`, {
         method: "PATCH",
@@ -109,14 +99,12 @@ function AccountDetails() {
     },
   });
 
-  // آپلود آواتار
   const uploadAvatar = async (file) => {
     if (!file) return;
     setUploading(true);
     setUploadError("");
 
     try {
-      // const csrfToken = getCsrfToken();
 
       const formData = new FormData();
       formData.append("avatar", file);
@@ -228,16 +216,6 @@ function AccountDetails() {
                   className="w-full mt-1 p-2.5 border rounded"
                 />
               </div>
-
-              {/* Role */}
-              {/* <div>
-                <label>نقش کاربری</label>
-                <input
-                  value={user.role || ""}
-                  disabled
-                  className="w-full mt-1 p-2.5 bg-gray-100 border rounded"
-                />
-              </div> */}
 
               <div>
                 <label>کد ملی</label>
