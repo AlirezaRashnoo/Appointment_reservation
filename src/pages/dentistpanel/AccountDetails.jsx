@@ -8,8 +8,7 @@ import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { useUserStore } from "@/stores/useUserStore";
-
-
+ 
 // ==================== Axios Instance ====================
 const axiosInstance = axios.create({
   baseURL: "https://dentist-reyn.onrender.com",
@@ -17,7 +16,7 @@ const axiosInstance = axios.create({
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
-
+ 
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -27,16 +26,16 @@ axiosInstance.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
+ 
 // ==================== Toast ====================
 const Toast = ({ message, type = "success", onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
-
+ 
   const bgColor = type === "success" ? "bg-green-500" : "bg-red-500";
-
+ 
   return (
     <div
       className={`fixed top-4 right-4 z-50 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3`}
@@ -46,7 +45,7 @@ const Toast = ({ message, type = "success", onClose }) => {
     </div>
   );
 };
-
+ 
 // ==================== LoadingSpinner ====================
 const LoadingSpinner = ({ size = "medium" }) => {
   const sizeClasses = { small: "w-4 h-4", medium: "w-8 h-8", large: "w-12 h-12" };
@@ -58,7 +57,7 @@ const LoadingSpinner = ({ size = "medium" }) => {
     </div>
   );
 };
-
+ 
 // ==================== ErrorState ====================
 const ErrorState = ({ error, onRetry, message }) => (
   <div className="text-center py-12 px-4">
@@ -78,15 +77,17 @@ const ErrorState = ({ error, onRetry, message }) => (
     </div>
   </div>
 );
-
+ 
 // ==================== Validation Schema ====================
 const PHONE_REGEX = /^09\d{9}$/;
-
+ 
+// نکته: چون حالا portfolio دیگه لینک دستی نیست بلکه «کلید فایل» روی استوریج
+// (مثلاً portfolio/{dentistUserId}/xxx.jpg) هست، دیگه نیازی به اعتبارسنجی url نیست.
 const schema = z.object({
   specialization: z.string().optional(),
   degree: z.string().optional(),
   birthDateShamsi: z.string().optional(),
-  portfolio: z.array(z.union([z.string().url("آدرس معتبر نیست"), z.literal("")])).optional(),
+  portfolio: z.array(z.string()).optional(),
   additionalPhoneNumbers: z
     .array(z.string().regex(PHONE_REGEX, "شماره معتبر نیست (مثال: 09123456789)"))
     .max(2, "حداکثر دو شماره مجاز است")
@@ -99,20 +100,27 @@ const schema = z.object({
     .optional(),
   bio: z.string().max(1000, "حداکثر ۱۰۰۰ کاراکتر").optional(),
 });
-
+ 
 // ==================== Constants ====================
 const QUERY_KEYS = { DENTIST_PROFILE: "dentistProfile" };
 const API_ENDPOINTS = {
   DENTIST_ME: "/api/v1/dentist/me",
   UPLOAD_AVATAR: "/api/v1/dentist/avatar",
+  // پرسیند یو‌آرال برای آپلود (نیاز به نقش دندان‌پزشک و روی /me)
+  PORTFOLIO_UPLOAD_URL: "/api/v1/dentist/me/portfolio-pre-signed-url",
+  // پرسیند یو‌آرال برای مشاهده/دانلود (روی مسیر عمومی، بدون /me)
+  PORTFOLIO_VIEW_URL: "/api/v1/dentist/portfolio-pre-signed-url",
 };
-
+ 
+const MAX_PORTFOLIO_FILES = 10;
+const MAX_PORTFOLIO_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+ 
 // ==================== API Functions ====================
 const fetchDentistProfile = async () => {
   const { data } = await axiosInstance.get(API_ENDPOINTS.DENTIST_ME);
   return data.data;
 };
-
+ 
 // FIX: از PATCH استفاده می‌کنیم (مطابق کد اصلی شما)
 const updateDentistProfile = async ({ profileData, csrfToken }) => {
   const { data } = await axiosInstance.patch(API_ENDPOINTS.DENTIST_ME, profileData, {
@@ -120,7 +128,7 @@ const updateDentistProfile = async ({ profileData, csrfToken }) => {
   });
   return data.data;
 };
-
+ 
 const uploadAvatar = async ({ file, csrfToken }) => {
   const formData = new FormData();
   formData.append("avatar", file);
@@ -132,7 +140,50 @@ const uploadAvatar = async ({ file, csrfToken }) => {
   });
   return data.data;
 };
+ 
+// از بک‌اند یک URL موقت (presigned) برای آپلود مستقیم فایل روی استوریج می‌گیریم.
+// طبق کالکشن پستمن: POST /api/v1/dentist/me/portfolio-pre-signed-url?key=...
+const createPortfolioUploadUrl = async ({ key, csrfToken }) => {
+  const { data } = await axiosInstance.post(
+    `${API_ENDPOINTS.PORTFOLIO_UPLOAD_URL}?key=${encodeURIComponent(key)}`,
+    null,
+    { headers: { "x-csrf-token": csrfToken } }
+  );
+  // نام دقیق فیلد در ریسپانس بک‌اند مشخص نبود (کالکشن پستمن نمونه ریسپانس نداشت).
+  // چند حالت رایج رو پوشش می‌دیم؛ اگه بک‌اند اسم دیگه‌ای برگردوند همینجا اضافه کن.
+  const payload = data?.data ?? data;
+  return (
+    payload?.url ||
+    payload?.uploadUrl ||
+    payload?.presignedUrl ||
+    payload?.signedUrl ||
+    payload
+  );
+};
+ 
+// برای نمایش/دانلود فایل: GET /api/v1/dentist/portfolio-pre-signed-url?key=...
+const getPortfolioViewUrl = async ({ key, csrfToken }) => {
+  const { data } = await axiosInstance.get(
+    `${API_ENDPOINTS.PORTFOLIO_VIEW_URL}?key=${encodeURIComponent(key)}`,
+    { headers: { "x-csrf-token": csrfToken } }
+  );
+  const payload = data?.data ?? data;
+  return (
+    payload?.url ||
+    payload?.downloadUrl ||
+    payload?.presignedUrl ||
+    payload?.signedUrl ||
+    payload
+  );
+};
+ 
 
+const uploadFileToPresignedUrl = async (presignedUrl, file) => {
+  await axios.post(presignedUrl, file, {
+    headers: { "Content-Type": file.type || "application/octet-stream" },
+  });
+};
+ 
 // ==================== TabButton ====================
 const TabButton = ({ label, active, onClick }) => (
   <button
@@ -147,9 +198,8 @@ const TabButton = ({ label, active, onClick }) => (
     {label}
   </button>
 );
-
-// ==================== FieldList ====================
-// FIX: از register استفاده می‌کنیم به‌جای value+onChange دستی
+ 
+// ==================== FieldList (برای شماره‌های تماس) ====================
 const FieldList = ({ title, fields, onAdd, onRemove, registerFn, errors, placeholder }) => (
   <div className="space-y-3">
     <label className="block text-blue-700 mb-2 font-medium">{title}</label>
@@ -183,7 +233,170 @@ const FieldList = ({ title, fields, onAdd, onRemove, registerFn, errors, placeho
     </button>
   </div>
 );
-
+ 
+const PortfolioItem = ({ fileKey, csrfToken, onRemove }) => {
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(true);
+  const [previewError, setPreviewError] = useState(false);
+ 
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingPreview(true);
+    setPreviewError(false);
+ 
+    getPortfolioViewUrl({ key: fileKey, csrfToken })
+      .then((url) => {
+        if (!cancelled) setPreviewUrl(typeof url === "string" ? url : null);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPreview(false);
+      });
+ 
+    return () => {
+      cancelled = true;
+    };
+  }, [fileKey, csrfToken]);
+ 
+  return (
+    <div className="relative group rounded-lg overflow-hidden border border-blue-200 bg-blue-50 aspect-square">
+      {loadingPreview && (
+        <div className="w-full h-full flex items-center justify-center">
+          <LoadingSpinner size="small" />
+        </div>
+      )}
+      {!loadingPreview && previewUrl && !previewError && (
+        <img
+          src={previewUrl}
+          alt="نمونه کار"
+          className="w-full h-full object-cover"
+          onError={() => setPreviewError(true)}
+        />
+      )}
+      {!loadingPreview && (!previewUrl || previewError) && (
+        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs px-2 text-center">
+          پیش‌نمایش در دسترس نیست
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute top-1.5 left-1.5 bg-red-600 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        🗑️ حذف
+      </button>
+    </div>
+  );
+};
+ 
+// ==================== PortfolioUploader ====================
+// جایگزین FieldList قدیمی برای تب «نمونه کارها»: به‌جای اینکه دندان‌پزشک لینک
+// دستی وارد کنه، فایل رو انتخاب می‌کنه، مستقیم آپلود می‌شه و «کلید» فایل به
+// فیلد آرایه‌ی portfolio فرم اضافه می‌شه (که با ذخیره‌ی فرم، PATCH می‌شه).
+const PortfolioUploader = ({ fields, onAppend, onRemove, csrfToken, showToast }) => {
+  const [uploading, setUploading] = useState(false);
+ 
+  const handleFileSelect = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      event.target.value = ""; // امکان انتخاب دوباره‌ی همون فایل
+      if (!file) return;
+ 
+      if (fields.length >= MAX_PORTFOLIO_FILES) {
+        showToast(`حداکثر ${MAX_PORTFOLIO_FILES} نمونه کار مجاز است`, "error");
+        return;
+      }
+      if (!file.type.startsWith("image/")) {
+        showToast("فقط فایل تصویری مجاز است", "error");
+        return;
+      }
+      if (file.size > MAX_PORTFOLIO_FILE_SIZE) {
+        showToast("حجم فایل باید کمتر از ۵ مگابایت باشد", "error");
+        return;
+      }
+ 
+      setUploading(true);
+      try {
+        // یک کلید یکتا برای فایل می‌سازیم. اگه بک‌اند فرمت خاصی برای
+        // fileKey می‌خواد (مثلاً باید حتماً با شناسه دندان‌پزشک شروع بشه)
+        // همین‌جا باید اصلاحش کنی.
+        const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+        const key = `portfolio/${Date.now()}-${safeName}`;
+ 
+        const uploadUrl = await createPortfolioUploadUrl({ key, csrfToken });
+        if (!uploadUrl || typeof uploadUrl !== "string") {
+          throw new Error("آدرس آپلود از سرور دریافت نشد");
+        }
+ 
+        await uploadFileToPresignedUrl(uploadUrl, file);
+ 
+        onAppend(key);
+        showToast("نمونه کار با موفقیت آپلود شد", "success");
+      } catch (err) {
+        showToast(
+          err?.response?.data?.message || err?.message || "خطا در آپلود نمونه کار",
+          "error"
+        );
+      } finally {
+        setUploading(false);
+      }
+    },
+    [fields.length, onAppend, csrfToken, showToast]
+  );
+ 
+  return (
+    <div className="space-y-3">
+      <label className="block text-blue-700 mb-2 font-medium">نمونه کارها</label>
+ 
+      {fields.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {fields.map((field, index) => (
+            <PortfolioItem
+              key={field.id}
+              fileKey={field.value ?? field}
+              csrfToken={csrfToken}
+              onRemove={() => onRemove(index)}
+            />
+          ))}
+        </div>
+      )}
+ 
+      <div>
+        <input
+          id="portfolio-upload-input"
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          disabled={uploading || fields.length >= MAX_PORTFOLIO_FILES}
+          className="hidden"
+        />
+        <label
+          htmlFor="portfolio-upload-input"
+          className={`inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg border border-dashed border-blue-300 text-blue-600 cursor-pointer hover:bg-blue-50 transition-colors ${
+            uploading || fields.length >= MAX_PORTFOLIO_FILES
+              ? "opacity-50 cursor-not-allowed"
+              : ""
+          }`}
+        >
+          {uploading ? (
+            <>
+              <LoadingSpinner size="small" />
+              در حال آپلود...
+            </>
+          ) : (
+            <>➕ افزودن نمونه کار</>
+          )}
+        </label>
+        <p className="text-xs text-gray-400 mt-1">
+          حداکثر {MAX_PORTFOLIO_FILES} تصویر، هر کدام تا ۵ مگابایت
+        </p>
+      </div>
+    </div>
+  );
+};
+ 
 // ==================== AvatarUpload ====================
 const AvatarUpload = ({ avatarUrl, uploading, onUpload }) => (
   <div>
@@ -220,7 +433,7 @@ const AvatarUpload = ({ avatarUrl, uploading, onUpload }) => (
     </div>
   </div>
 );
-
+ 
 // ==================== ReadOnlyField ====================
 const ReadOnlyField = ({ label, value }) => (
   <div>
@@ -232,24 +445,24 @@ const ReadOnlyField = ({ label, value }) => (
     />
   </div>
 );
-
+ 
 // ==================== Main Component ====================
 export default function AccountDetails() {
   const queryClient = useQueryClient();
-
+ 
   const csrfToken = useUserStore((state) => state.csrfToken);
-
+ 
   const [activeTab, setActiveTab] = useState("portfolio");
   const [uploading, setUploading] = useState(false);
   const [birthDate, setBirthDate] = useState(null);
   const [toast, setToast] = useState(null);
-
+ 
   const showToast = useCallback((message, type = "success") => {
     setToast({ message, type });
   }, []);
-
+ 
   const hideToast = useCallback(() => setToast(null), []);
-
+ 
   // ==================== Query ====================
   const { data: profile, isLoading, isError, error, refetch } = useQuery({
     queryKey: [QUERY_KEYS.DENTIST_PROFILE],
@@ -258,7 +471,7 @@ export default function AccountDetails() {
     gcTime: 10 * 60 * 1000,
     retry: 2,
   });
-
+ 
   // ==================== Mutations ====================
   const updateMutation = useMutation({
     mutationFn: updateDentistProfile,
@@ -270,7 +483,7 @@ export default function AccountDetails() {
       showToast(err.response?.data?.message || "خطا در به‌روزرسانی پروفایل", "error");
     },
   });
-
+ 
   const uploadMutation = useMutation({
     mutationFn: uploadAvatar,
     onSuccess: () => {
@@ -278,29 +491,30 @@ export default function AccountDetails() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DENTIST_PROFILE] });
     },
     onError: (err) => {
+      console.log(err);
+ 
       showToast(err.response?.data?.message || "خطا در آپلود تصویر", "error");
     },
     onSettled: () => setUploading(false),
   });
-
+ 
   // ==================== Form ====================
-  // ==================== defaultValues (داخل useMemo) ====================
-const defaultValues = useMemo(
-  () => ({
-    specialization: profile?.specialization || "",
-    degree: profile?.degree || "", // ✅ اضافه شد
-    birthDateShamsi: profile?.birthDateShamsi || "",
-    portfolio: profile?.portfolio || [],
-    additionalPhoneNumbers: profile?.additionalPhoneNumbers || [],
-    address: {
-      shortAddr: profile?.address?.shortAddr || "",
-      longAddr: profile?.address?.longAddr || "",
-    },
-    bio: profile?.user?.profile?.bio || "",
-  }),
-  [profile]
-);
-
+  const defaultValues = useMemo(
+    () => ({
+      specialization: profile?.specialization || "",
+      degree: profile?.degree || "",
+      birthDateShamsi: profile?.birthDateShamsi || "",
+      portfolio: profile?.portfolio || [],
+      additionalPhoneNumbers: profile?.additionalPhoneNumbers || [],
+      address: {
+        shortAddr: profile?.address?.shortAddr || "",
+        longAddr: profile?.address?.longAddr || "",
+      },
+      bio: profile?.user?.profile?.bio || "",
+    }),
+    [profile]
+  );
+ 
   const {
     register,
     handleSubmit,
@@ -314,21 +528,24 @@ const defaultValues = useMemo(
     mode: "onTouched",
     defaultValues,
   });
-
+ 
   useEffect(() => {
     if (profile) {
       reset(defaultValues);
       if (profile.birthDateShamsi) setBirthDate(profile.birthDateShamsi);
     }
   }, [profile, reset, defaultValues]);
-
+ 
   // ==================== Field Arrays ====================
-  const { fields: portfolioFields, append: appendPortfolio, remove: removePortfolio } =
-    useFieldArray({ control, name: "portfolio" });
-
+  const {
+    fields: portfolioFields,
+    append: appendPortfolio,
+    remove: removePortfolio,
+  } = useFieldArray({ control, name: "portfolio" });
+ 
   const { fields: phoneFields, append: appendPhone, remove: removePhone } =
     useFieldArray({ control, name: "additionalPhoneNumbers" });
-
+ 
   // ==================== Handlers ====================
   const onDateChange = useCallback(
     (date) => {
@@ -337,7 +554,7 @@ const defaultValues = useMemo(
     },
     [setValue]
   );
-
+ 
   const handleAvatarUpload = useCallback(
     (event) => {
       const file = event.target.files?.[0];
@@ -355,36 +572,52 @@ const defaultValues = useMemo(
     },
     [uploadMutation, showToast]
   );
-
+ 
+  // آپلود فایل نمونه‌کار فوراً کلید رو به فیلد آرایه اضافه می‌کنه؛ ذخیره‌ی
+  // نهایی (یعنی PATCH شدن این آرایه روی پروفایل) همچنان با دکمه‌ی
+  // «ذخیره تغییرات» انجام می‌شه، دقیقاً مثل بقیه‌ی فیلدهای فرم.
+  const handlePortfolioAppend = useCallback(
+    (key) => {
+      appendPortfolio(key, { shouldDirty: true });
+    },
+    [appendPortfolio]
+  );
+ 
+  const handlePortfolioRemove = useCallback(
+    (index) => {
+      removePortfolio(index);
+    },
+    [removePortfolio]
+  );
+ 
   // ==================== onSubmit ====================
-const onSubmit = useCallback(
-  async (data) => {
-    const cleanData = {
-      ...(data.specialization && { specialization: data.specialization }),
-      ...(data.degree && { degree: data.degree }), // ✅ اضافه شد
-      ...(data.birthDateShamsi && { birthDateShamsi: data.birthDateShamsi }),
-      ...(data.portfolio?.length > 0 && { portfolio: data.portfolio }),
-      ...(data.additionalPhoneNumbers?.length > 0 && {
-        additionalPhoneNumbers: data.additionalPhoneNumbers,
-      }),
-      address: {
-        ...(data.address?.shortAddr && { shortAddr: data.address.shortAddr }),
-        ...(data.address?.longAddr && { longAddr: data.address.longAddr }),
-      },
-      // ✅ bio به profile منتقل شد
-      profile: {
-        ...(data.bio && { bio: data.bio }),
-      },
-    };
-
-    if (Object.keys(cleanData.address).length === 0) delete cleanData.address;
-    if (Object.keys(cleanData.profile).length === 0) delete cleanData.profile; // ✅ اگر خالی بود حذف شه
-
-    updateMutation.mutate({ profileData: cleanData, csrfToken });
-  },
-  [updateMutation, csrfToken]
-);
-
+  const onSubmit = useCallback(
+    async (data) => {
+      const cleanData = {
+        ...(data.specialization && { specialization: data.specialization }),
+        ...(data.degree && { degree: data.degree }),
+        ...(data.birthDateShamsi && { birthDateShamsi: data.birthDateShamsi }),
+        ...(data.portfolio?.length > 0 && { portfolio: data.portfolio }),
+        ...(data.additionalPhoneNumbers?.length > 0 && {
+          additionalPhoneNumbers: data.additionalPhoneNumbers,
+        }),
+        address: {
+          ...(data.address?.shortAddr && { shortAddr: data.address.shortAddr }),
+          ...(data.address?.longAddr && { longAddr: data.address.longAddr }),
+        },
+        profile: {
+          ...(data.bio && { bio: data.bio }),
+        },
+      };
+ 
+      if (Object.keys(cleanData.address).length === 0) delete cleanData.address;
+      if (Object.keys(cleanData.profile).length === 0) delete cleanData.profile;
+ 
+      updateMutation.mutate({ profileData: cleanData, csrfToken });
+    },
+    [updateMutation, csrfToken]
+  );
+ 
   // ==================== Loading / Error ====================
   if (isLoading) {
     return (
@@ -393,7 +626,7 @@ const onSubmit = useCallback(
       </div>
     );
   }
-
+ 
   if (isError) {
     return (
       <div className="pb-16 bg-blue-50 min-h-screen">
@@ -407,12 +640,12 @@ const onSubmit = useCallback(
       </div>
     );
   }
-
+ 
   // ==================== Render ====================
   return (
     <div className="pb-16 bg-blue-50 min-h-screen relative" dir="rtl">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
-
+ 
       <div className="container mx-auto max-w-4xl px-4">
         {/* Header */}
         <div className="flex items-center gap-x-3 pt-10">
@@ -430,12 +663,11 @@ const onSubmit = useCallback(
           </svg>
           <h4 className="text-lg font-semibold text-gray-800">ویرایش اطلاعات دندان‌پزشک</h4>
         </div>
-
+ 
         {/* Form Card */}
         <div className="bg-white shadow-md p-6 rounded-xl mt-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
             <div className="grid sm:grid-cols-2 gap-6">
-              {/* Read-only fields از store */}
               <ReadOnlyField
                 label="نام و نام خانوادگی"
                 value={
@@ -448,8 +680,7 @@ const onSubmit = useCallback(
               <ReadOnlyField label="ایمیل" value={profile?.user?.profile?.email} />
               <ReadOnlyField label="کد ملی" value={profile?.user?.profile?.nationalCode} />
               <ReadOnlyField label="کد نظام پزشکی" value={profile?.medicalCouncilNumber} />
-
-              {/* Birthdate */}
+ 
               <div>
                 <label className="block text-sm font-medium text-gray-700">تاریخ تولد</label>
                 <DatePicker
@@ -466,8 +697,7 @@ const onSubmit = useCallback(
                   <p className="text-red-500 text-sm mt-1">{errors.birthDateShamsi.message}</p>
                 )}
               </div>
-
-              {/* Specialization */}
+ 
               <div>
                 <label className="block text-sm font-medium text-gray-700">تخصص</label>
                 <input
@@ -479,7 +709,7 @@ const onSubmit = useCallback(
                   <p className="text-red-500 text-sm mt-1">{errors.specialization.message}</p>
                 )}
               </div>
-
+ 
               <div>
                 <label className="block text-sm font-medium text-gray-700">مدرک تحصیلی</label>
                 <input
@@ -490,9 +720,8 @@ const onSubmit = useCallback(
                 {errors.degree && (
                   <p className="text-red-500 text-sm mt-1">{errors.degree.message}</p>
                 )}
-            </div>
-
-              {/* Short Address */}
+              </div>
+ 
               <div>
                 <label className="block text-sm font-medium text-gray-700">آدرس خلاصه</label>
                 <input
@@ -501,16 +730,14 @@ const onSubmit = useCallback(
                   placeholder="مثلاً: تهران، خیابان ولیعصر"
                 />
               </div>
-
-              {/* Avatar Upload */}
+ 
               <AvatarUpload
                 avatarUrl={profile?.user?.profile?.avatar}
                 uploading={uploading}
                 onUpload={handleAvatarUpload}
               />
             </div>
-
-            {/* Long Address */}
+ 
             <div>
               <label className="block text-sm font-medium text-gray-700">آدرس دقیق مطب</label>
               <textarea
@@ -523,8 +750,7 @@ const onSubmit = useCallback(
                 <p className="text-red-500 text-sm mt-1">{errors.address.longAddr.message}</p>
               )}
             </div>
-
-            {/* Bio */}
+ 
             <div>
               <label className="block text-sm font-medium text-gray-700">درباره من</label>
               <textarea
@@ -537,7 +763,7 @@ const onSubmit = useCallback(
                 <p className="text-red-500 text-sm mt-1">{errors.bio.message}</p>
               )}
             </div>
-
+ 
             {/* Tabs */}
             <div className="flex flex-wrap justify-center gap-2 sm:gap-4 mt-6 mb-4">
               <TabButton
@@ -551,38 +777,34 @@ const onSubmit = useCallback(
                 onClick={() => setActiveTab("phone_numbers")}
               />
             </div>
+ 
             {/* Tab Content */}
             {activeTab === "portfolio" && (
-              <FieldList
-                title="نمونه کارها (لینک تصاویر)"
+              <PortfolioUploader
                 fields={portfolioFields}
-                onAdd={() => appendPortfolio("")}
-                onRemove={removePortfolio}
-                // FIX: register درست به هر آیتم وصل می‌شه
-                registerFn={(index) => register(`portfolio.${index}`)}
-                errors={errors.portfolio}
-                placeholder="https://example.com/image.jpg"
+                onAppend={handlePortfolioAppend}
+                onRemove={handlePortfolioRemove}
+                csrfToken={csrfToken}
+                showToast={showToast}
               />
             )}
-
+ 
             {activeTab === "phone_numbers" && (
               <FieldList
                 title="شماره‌های تماس دیگر (حداکثر ۲ شماره)"
                 fields={phoneFields}
                 onAdd={() => phoneFields.length < 2 && appendPhone("")}
                 onRemove={removePhone}
-                // FIX: register درست به هر آیتم وصل می‌شه
                 registerFn={(index) => register(`additionalPhoneNumbers.${index}`)}
                 errors={errors.additionalPhoneNumbers}
                 placeholder="مثال: 09123456789"
               />
             )}
-
+ 
             {/* Submit */}
             <div className="flex justify-end mt-8">
               <button
                 type="submit"
-                // FIX: isPending به‌جای isLoading (react-query v5)
                 disabled={updateMutation.isPending || !isDirty}
                 className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg text-sm shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
@@ -602,12 +824,3 @@ const onSubmit = useCallback(
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
