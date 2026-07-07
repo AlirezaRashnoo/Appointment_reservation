@@ -4,7 +4,7 @@ import Cookies from "js-cookie";
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 const BASE_URL = "https://dentist-reyn.onrender.com"; // https نه http
-const TEHRAN_UTC_OFFSET = "+03:30"; // آفست ثابت تهران؛ اگر بک‌اند DST داشت باید داینامیک شود
+const TEHRAN_UTC_OFFSET = "+03:30"; // آفست ثابت تهران (ایران دیگر DST نداره، پس ثابت درسته)
 const BOOKING_HORIZON_DAYS = 21; // چند روز آینده برای انتخاب نمایش داده شود
 const MIN_LEAD_MINUTES = 30; // حداقل فاصله از الان تا نزدیک‌ترین اسلات قابل رزرو امروز
 
@@ -64,18 +64,45 @@ function priceFA(n) {
   return new Intl.NumberFormat("fa-IR").format(n);
 }
 
-// ─── Date/time helpers ─────────────────────────────────────────────────────────
-function addDays(base, n) {
-  const d = new Date(base);
-  d.setDate(d.getDate() + n);
-  d.setHours(0, 0, 0, 0);
+// ─── Date/time helpers (تایم‌زون‌امن، مستقل از تایم‌زون دستگاه کاربر) ──────────
+// همه‌ی تاریخ‌ها به‌صورت یک Date «لنگر UTC» نگه‌داری می‌شن که فقط سال/ماه/روز
+// تقویمی رو حمل می‌کنه و همیشه با گترهای getUTC* خونده می‌شه — نه گترهای محلی
+// (getDate/getMonth/getDay/...) که به تایم‌زون سیستم کاربر وابسته‌ان.
+
+// «الان» به وقت تهران، مستقل از تایم‌زون دستگاه کاربر
+function getTehranNowParts() {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tehran",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const p = Object.fromEntries(fmt.formatToParts(new Date()).map(x => [x.type, x.value]));
+  return {
+    year: Number(p.year),
+    month: Number(p.month),
+    day: Number(p.day),
+    hour: p.hour === "24" ? 0 : Number(p.hour),
+    minute: Number(p.minute),
+  };
+}
+
+// «امروز» به وقت تهران، به شکل لنگر UTC
+function todayTehranAnchor() {
+  const t = getTehranNowParts();
+  return new Date(Date.UTC(t.year, t.month - 1, t.day));
+}
+
+// n روز بعد از یک لنگر UTC مشخص
+function addDays(anchor, n) {
+  const d = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() + n);
   return d;
 }
 
 function toYMD(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
@@ -91,24 +118,26 @@ function minutesToTime(min) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-// تبدیل تاریخ+ساعت محلی (به وقت تهران) به ISO UTC برای ارسال به بک‌اند
+// تبدیل تاریخ (لنگر UTC) + ساعت محلی تهران به ISO UTC برای ارسال به بک‌اند
 function localToUtcIso(date, time) {
   const [h, m] = time.split(":").map(Number);
-  const y  = date.getFullYear();
-  const mo = String(date.getMonth() + 1).padStart(2, "0");
-  const d  = String(date.getDate()).padStart(2, "0");
+  const y  = date.getUTCFullYear();
+  const mo = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d  = String(date.getUTCDate()).padStart(2, "0");
   const hh = String(h).padStart(2, "0");
   const mm = String(m).padStart(2, "0");
   return new Date(`${y}-${mo}-${d}T${hh}:${mm}:00${TEHRAN_UTC_OFFSET}`).toISOString();
 }
 
 function dateChipLabel(date) {
-  const weekday = DAY_LABELS[date.getDay()].slice(0, 3);
+  const weekday = DAY_LABELS[date.getUTCDay()].slice(0, 3);
   let dayMonth;
   try {
-    dayMonth = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { day: "numeric", month: "short" }).format(date);
+    dayMonth = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+      day: "numeric", month: "short", timeZone: "UTC", // مهم: وگرنه با تایم‌زون سیستم شیفت می‌خوره
+    }).format(date);
   } catch {
-    dayMonth = `${date.getDate()}/${date.getMonth() + 1}`;
+    dayMonth = `${date.getUTCDate()}/${date.getUTCMonth() + 1}`;
   }
   return { weekday, dayMonth };
 }
@@ -495,22 +524,23 @@ export default function TimeVisit() {
     [...availability].sort((a,b) => a.dayOfWeek - b.dayOfWeek),
   [availability]);
 
-  // ── تاریخ‌های قابل‌رزرو (بر اساس روزهای کاری دندانپزشک) ──
+  // ── تاریخ‌های قابل‌رزرو (بر اساس روزهای کاری دندانپزشک، به وقت تهران) ──
   const availableDates = useMemo(() => {
     if (availability.length === 0) return [];
     const workingDays = new Set(availability.map(a => a.dayOfWeek));
+    const today = todayTehranAnchor();
     const list = [];
     for (let i = 0; i < BOOKING_HORIZON_DAYS; i++) {
-      const dt = addDays(new Date(), i);
-      if (workingDays.has(dt.getDay())) list.push(dt);
+      const dt = addDays(today, i);
+      if (workingDays.has(dt.getUTCDay())) list.push(dt);
     }
     return list;
   }, [availability]);
 
-  // ── اسلات‌های ساعتی برای تاریخ و خدمت انتخاب‌شده ──
+  // ── اسلات‌های ساعتی برای تاریخ و خدمت انتخاب‌شده (بر اساس وقت تهران) ──
   const timeSlots = useMemo(() => {
     if (!selectedDate || !selectedProc) return [];
-    const dayAvail = availability.find(a => a.dayOfWeek === selectedDate.getDay());
+    const dayAvail = availability.find(a => a.dayOfWeek === selectedDate.getUTCDay());
     if (!dayAvail) return [];
 
     const startMin = timeToMinutes(dayAvail.startTime);
@@ -521,9 +551,9 @@ export default function TimeVisit() {
     const block     = before + duration + after;
     if (block <= 0 || startMin >= endMin) return [];
 
-    const now = new Date();
-    const isToday = toYMD(selectedDate) === toYMD(now);
-    const nowMin  = now.getHours() * 60 + now.getMinutes();
+    const nowParts = getTehranNowParts();
+    const isToday  = toYMD(selectedDate) === toYMD(todayTehranAnchor());
+    const nowMin   = nowParts.hour * 60 + nowParts.minute;
 
     const slots = [];
     let cursor = startMin;
@@ -841,7 +871,7 @@ export default function TimeVisit() {
               <div className="flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-xl px-3 py-2">
                 <CalendarIcon className="w-3.5 h-3.5 text-teal-500"/>
                 <span className="text-xs font-bold text-teal-700">
-                  {DAY_LABELS[selectedDate.getDay()]} {dateChipLabel(selectedDate).dayMonth} — ساعت {selectedTime}
+                  {DAY_LABELS[selectedDate.getUTCDay()]} {dateChipLabel(selectedDate).dayMonth} — ساعت {selectedTime}
                 </span>
               </div>
             )}
@@ -888,7 +918,6 @@ export default function TimeVisit() {
               ) : (
                 <>
                   <span>ثبت نوبت</span>
-
                 </>
               )}
             </button>
