@@ -7,6 +7,21 @@ import { useParams, useNavigate } from "react-router-dom";
 import apiService from "@/features/api";
 import toast from "react-hot-toast";
 import Cookies from "js-cookie";
+import {
+  FiChevronLeft,
+  FiCamera,
+  FiArrowRight,
+  FiSave,
+  FiUser,
+  FiPhone,
+  FiSettings,
+  FiCreditCard,
+  FiCalendar,
+  FiEdit2,
+  FiLoader,
+  FiAlertTriangle,
+  FiFileMinus,
+} from "react-icons/fi";
 
 // ========== Schema اعتبارسنجی ==========
 const patientSchema = z.object({
@@ -16,7 +31,6 @@ const patientSchema = z.object({
   email: z.string().email("ایمیل معتبر نیست").nullable().optional(),
   firstName: z.string().min(2, "نام باید حداقل ۲ کاراکتر باشد").nullable().optional(),
   lastName: z.string().min(2, "نام خانوادگی باید حداقل ۲ کاراکتر باشد").nullable().optional(),
-  fullName: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
   avatar: z.string().nullable().optional(),
   nationalCode: z.string().length(10, "کد ملی باید ۱۰ رقم باشد").nullable().optional(),
@@ -51,7 +65,7 @@ const updatePatientProfile = async ({ userId, payload }) => {
 const uploadAvatar = async ({ userId, file }) => {
   const formData = new FormData();
   formData.append("avatar", file);
-  
+
   const response = await apiService.post(`/users/${userId}/profile/avatar`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
@@ -61,15 +75,56 @@ const uploadAvatar = async ({ userId, file }) => {
   return response.data;
 };
 
-// ========== Status Config ==========
+// ========== Design tokens (injected once) ==========
+const FONT_STYLE_ID = "patient-chart-fonts";
+function useChartFonts() {
+  useEffect(() => {
+    if (document.getElementById(FONT_STYLE_ID)) return;
+    const link = document.createElement("link");
+    link.id = FONT_STYLE_ID;
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=Noto+Naskh+Arabic:wght@500;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
+    document.head.appendChild(link);
+  }, []);
+}
+
+// Subtle ECG watermark used behind the header band
+const ECG_PATTERN =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Cpath d='M0 26 H52 L60 8 L70 42 L78 26 H160' stroke='%23ffffff' stroke-width='1.6' fill='none' opacity='0.16'/%3E%3C/svg%3E";
+
+// ========== Status Config (clinical chart colors) ==========
 const STATUS_CONFIG = {
-  active: { label: "فعال", color: "emerald", icon: "✓" },
-  pending: { label: "در انتظار تایید", color: "amber", icon: "⏳" },
-  inactive: { label: "غیرفعال", color: "rose", icon: "✕" },
+  active: {
+    label: "فعال",
+    icon: "✓",
+    dot: "bg-[#1F8A5F]",
+    ring: "ring-[#1F8A5F]",
+    text: "text-[#1F8A5F]",
+    tint: "bg-[#E7F4EE]",
+  },
+  pending: {
+    label: "در انتظار تایید",
+    icon: "⏳",
+    dot: "bg-[#B9821A]",
+    ring: "ring-[#B9821A]",
+    text: "text-[#B9821A]",
+    tint: "bg-[#FBF1DF]",
+  },
+  inactive: {
+    label: "غیرفعال",
+    icon: "✕",
+    dot: "bg-[#B14A3E]",
+    ring: "ring-[#B14A3E]",
+    text: "text-[#B14A3E]",
+    tint: "bg-[#F8E9E7]",
+  },
 };
 
 // ========== Main Component ==========
 export default function PatientProfile() {
+  useChartFonts();
+
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -91,7 +146,7 @@ export default function PatientProfile() {
 
   const updateMutation = useMutation({
     mutationFn: updatePatientProfile,
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["patient-profile", id] });
       toast.success("اطلاعات با موفقیت ذخیره شد");
       setSelectedImage(null);
@@ -133,7 +188,6 @@ export default function PatientProfile() {
       email: "",
       firstName: "",
       lastName: "",
-      fullName: "",
       bio: "",
       avatar: "",
       nationalCode: "",
@@ -143,6 +197,7 @@ export default function PatientProfile() {
   const avatar = watch("avatar");
   const firstName = watch("firstName");
   const lastName = watch("lastName");
+  const currentStatus = watch("status");
 
   useEffect(() => {
     if (patientData) {
@@ -154,7 +209,6 @@ export default function PatientProfile() {
         email: profile.email || "",
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",
-        fullName: profile.fullName || "",
         bio: profile.bio || "",
         avatar: profile.avatar || "",
         nationalCode: profile.nationalCode || "",
@@ -162,26 +216,15 @@ export default function PatientProfile() {
     }
   }, [patientData, reset]);
 
-  // Update fullName automatically when firstName or lastName changes
-  useEffect(() => {
-    if (firstName && lastName) {
-      setValue("fullName", `${firstName} ${lastName}`);
-    } else if (firstName) {
-      setValue("fullName", firstName);
-    } else if (lastName) {
-      setValue("fullName", lastName);
-    }
-  }, [firstName, lastName, setValue]);
-
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     if (!file.type.startsWith("image/")) {
       toast.error("فقط تصویر انتخاب کنید");
       return;
     }
-    
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error("حجم تصویر نباید بیشتر از ۵ مگابایت باشد");
       return;
@@ -189,7 +232,7 @@ export default function PatientProfile() {
 
     setUploading(true);
     setSelectedImage(URL.createObjectURL(file));
-    
+
     try {
       await uploadMutation.mutateAsync({ userId: id, file });
     } finally {
@@ -207,7 +250,6 @@ export default function PatientProfile() {
         email: formData.email || null,
         firstName: formData.firstName || null,
         lastName: formData.lastName || null,
-        fullName: formData.fullName || null,
         bio: formData.bio || null,
         avatar: formData.avatar || null,
         nationalCode: formData.nationalCode || null,
@@ -217,138 +259,242 @@ export default function PatientProfile() {
   };
 
   const handleStatusChange = (newStatus) => {
-    setValue("status", newStatus);
+    setValue("status", newStatus, { shouldDirty: true });
   };
 
   if (isLoading) return <LoadingScreen />;
-  if (error) return <ErrorScreen message={error.message} onRetry={refetch} onBack={() => navigate("/admin-panel/users/patients")} />;
+  if (error)
+    return (
+      <ErrorScreen
+        message={error.message}
+        onRetry={refetch}
+        onBack={() => navigate("/admin-panel/users/patients")}
+      />
+    );
   if (!patientData) return <NotFoundScreen />;
 
   const profile = patientData.profile || {};
-  const statusCfg = STATUS_CONFIG[patientData.status] || STATUS_CONFIG.pending;
+  const statusCfg = STATUS_CONFIG[currentStatus] || STATUS_CONFIG.pending;
   const displayAvatar = selectedImage || avatar || profile.avatar;
-  const fullDisplayName = profile.fullName || [profile.firstName, profile.lastName].filter(Boolean).join(" ") || patientData.phoneNumber || "بدون نام";
+  const fullDisplayName =
+    [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
+    patientData.phoneNumber ||
+    "بدون نام";
+
+  const TABS = [
+    { key: "personal", label: "اطلاعات شخصی", icon: <FiUser className="w-4 h-4" /> },
+    { key: "contact", label: "اطلاعات تماس", icon: <FiPhone className="w-4 h-4" /> },
+    { key: "system", label: "تنظیمات سیستمی", icon: <FiSettings className="w-4 h-4" /> },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50" dir="rtl">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        
+    <div
+      dir="rtl"
+      className="min-h-screen"
+      style={{
+        background: "#EEF2F1",
+        fontFamily: "'Vazirmatn', sans-serif",
+        color: "#16302E",
+      }}
+    >
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-5">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm">
-          <button onClick={() => navigate("/admin-panel")} className="text-slate-500 hover:text-slate-700 transition">
+        <nav className="flex items-center gap-2 text-sm" style={{ color: "#5B7371" }}>
+          <button
+            onClick={() => navigate("/admin-panel")}
+            className="hover:text-[#0F6B63] transition-colors"
+          >
             پنل مدیریت
           </button>
-          <ChevronIcon />
-          <button onClick={() => navigate("/admin-panel/users/patients")} className="text-slate-500 hover:text-slate-700 transition">
+          <FiChevronLeft className="w-4 h-4" style={{ color: "#9BAEAC" }} />
+          <button
+            onClick={() => navigate("/admin-panel/users/patients")}
+            className="hover:text-[#0F6B63] transition-colors"
+          >
             بیماران
           </button>
-          <ChevronIcon />
-          <span className="text-slate-800 font-medium">پروفایل بیمار</span>
+          <FiChevronLeft className="w-4 h-4" style={{ color: "#9BAEAC" }} />
+          <span className="font-medium" style={{ color: "#16302E" }}>
+            پرونده بیمار
+          </span>
         </nav>
 
-        {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-          <div className="relative h-32 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-            <div className="absolute inset-0 bg-black/10" />
+        {/* Patient chart card */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "#FFFFFF",
+            border: "1px solid #DCE3E1",
+            boxShadow: "0 1px 2px rgba(15,42,39,0.04), 0 12px 32px -16px rgba(15,42,39,0.18)",
+          }}
+        >
+          {/* Thin ECG accent strip — purely decorative, no overlap with content below */}
+          <div className="relative h-14" style={{ background: "#0B4A45" }}>
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url("${ECG_PATTERN}")`,
+                backgroundRepeat: "repeat-x",
+                backgroundSize: "160px 48px",
+                backgroundPosition: "center",
+              }}
+            />
+            <div
+              className={`absolute top-0 bottom-0 right-0 w-1.5 ${statusCfg.dot}`}
+              aria-hidden="true"
+            />
           </div>
-          
-          <div className="relative px-6 pb-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-12 mb-4">
-              {/* Avatar Section */}
-              <div className="relative group">
-                <div className="relative">
+
+          <div className="px-6 pt-5 pb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+              <div className="flex items-center gap-4 min-w-0">
+                {/* Avatar (ID badge) */}
+                <div className="relative shrink-0">
                   {displayAvatar ? (
-                    <img 
-                      src={displayAvatar} 
+                    <img
+                      src={displayAvatar}
                       alt={fullDisplayName}
-                      className="w-24 h-24 rounded-2xl object-cover ring-4 ring-white shadow-xl"
+                      className="w-16 h-16 rounded-xl object-cover"
+                      style={{ border: "1px solid #DCE3E1" }}
                     />
                   ) : (
-                    <div className="w-24 h-24 rounded-2xl ring-4 ring-white shadow-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-white text-3xl font-bold">
+                    <div
+                      className="w-16 h-16 rounded-xl flex items-center justify-center"
+                      style={{ background: "#0F6B63" }}
+                    >
+                      <span
+                        className="text-white text-2xl"
+                        style={{ fontFamily: "'Noto Naskh Arabic', serif" }}
+                      >
                         {fullDisplayName.charAt(0)}
                       </span>
                     </div>
                   )}
-                  
-                  <label className={`absolute -bottom-2 -right-2 p-1.5 bg-white rounded-full shadow-md cursor-pointer hover:bg-indigo-50 transition-all ${
-                    uploading ? "opacity-50 cursor-wait" : ""
-                  }`}>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleAvatarUpload} 
-                      disabled={uploading} 
-                      className="hidden" 
+
+                  <label
+                    className={`absolute -bottom-1.5 -right-1.5 p-1 rounded-full shadow-sm cursor-pointer transition-all ${
+                      uploading ? "opacity-50 cursor-wait" : "hover:bg-[#DCEEEC]"
+                    }`}
+                    style={{ background: "#FFFFFF", border: "1px solid #DCE3E1" }}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      disabled={uploading}
+                      className="hidden"
                     />
-                    {uploading ? <SpinIcon size={16} /> : <CameraIcon />}
+                    {uploading ? (
+                      <FiLoader className="animate-spin" style={{ width: 14, height: 14, color: "#0F6B63" }} />
+                    ) : (
+                      <FiCamera className="w-3.5 h-3.5" style={{ color: "#0F6B63" }} />
+                    )}
                   </label>
                 </div>
-              </div>
 
-              {/* User Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                  <h1 className="text-2xl font-bold text-slate-800">{fullDisplayName}</h1>
-                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-${statusCfg.color}-50 text-${statusCfg.color}-700 ring-1 ring-${statusCfg.color}-200`}>
-                    <span>{statusCfg.icon}</span>
-                    <span>{statusCfg.label}</span>
+                {/* Name + status */}
+                <div className="min-w-0">
+                  <div className="flex items-center flex-wrap gap-2 mb-1">
+                    <h1
+                      className="text-xl leading-tight truncate"
+                      style={{ fontFamily: "'Noto Naskh Arabic', serif", fontWeight: 700 }}
+                    >
+                      {fullDisplayName}
+                    </h1>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${statusCfg.tint} ${statusCfg.text}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
+                      {statusCfg.label}
+                    </span>
                   </div>
+                  <p
+                    className="text-sm"
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: "#5B7371",
+                      direction: "ltr",
+                      unicodeBidi: "isolate",
+                    }}
+                  >
+                    {patientData.phoneNumber}
+                  </p>
                 </div>
-                <p className="text-sm text-slate-500 font-mono">{patientData.phoneNumber}</p>
               </div>
 
               <button
                 onClick={() => navigate("/admin-panel/users/patients")}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 bg-slate-50 rounded-xl hover:bg-slate-100 transition"
+                className="flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-colors shrink-0"
+                style={{ color: "#16302E", background: "#EEF2F1" }}
               >
-                <ArrowRightIcon />
+                <FiArrowRight className="w-4 h-4" />
                 بازگشت
               </button>
             </div>
 
-            {/* Meta Info */}
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
-              <Badge icon={<IdIcon />} text={`ID: ${patientData.id?.slice(0, 8)}...`} />
-              <Badge icon={<CalendarIcon />} text={`عضو از: ${new Date(patientData.createdAt).toLocaleDateString("fa-IR")}`} />
-              <Badge icon={<EditIcon />} text={`آخرین ویرایش: ${new Date(patientData.modifiedAt).toLocaleDateString("fa-IR")}`} />
+            {/* Meta info — chart data row */}
+            <div className="flex flex-wrap gap-2 pt-4" style={{ borderTop: "1px solid #DCE3E1" }}>
+              <MetaBadge icon={<FiCreditCard className="w-3.5 h-3.5" />} label="شناسه" value={`${patientData.id?.slice(0, 8)}…`} />
+              <MetaBadge
+                icon={<FiCalendar className="w-3.5 h-3.5" />}
+                label="عضویت"
+                value={new Date(patientData.createdAt).toLocaleDateString("fa-IR")}
+              />
+              <MetaBadge
+                icon={<FiEdit2 className="w-3.5 h-3.5" />}
+                label="آخرین ویرایش"
+                value={new Date(patientData.modifiedAt).toLocaleDateString("fa-IR")}
+              />
             </div>
           </div>
         </div>
 
-        {/* Main Form Card */}
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
-          {/* Tabs */}
-          <div className="border-b border-slate-200 px-6 pt-4">
-            <div className="flex gap-1">
-              {[
-                { key: "personal", label: "اطلاعات شخصی", icon: <UserIcon /> },
-                { key: "contact", label: "اطلاعات تماس", icon: <PhoneIcon /> },
-                { key: "system", label: "تنظیمات سیستمی", icon: <SettingsIcon /> },
-              ].map(({ key, label, icon }) => (
+        {/* Folder-tab navigation + form panel */}
+        <div>
+          <div className="flex gap-1 px-2">
+            {TABS.map(({ key, label, icon }, i) => {
+              const isActive = activeTab === key;
+              return (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setActiveTab(key)}
-                  className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-lg transition-all ${
-                    activeTab === key
-                      ? "bg-indigo-50 text-indigo-600 border-b-2 border-indigo-500"
-                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                  }`}
+                  className="relative flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all"
+                  style={{
+                    background: isActive ? "#FFFFFF" : "#E3E9E7",
+                    color: isActive ? "#0B4A45" : "#5B7371",
+                    clipPath: "polygon(10% 0, 100% 0, 92% 100%, 0% 100%)",
+                    marginInlineEnd: i === 0 ? 0 : "-14px",
+                    transform: isActive ? "translateY(0)" : "translateY(4px)",
+                    zIndex: isActive ? 10 : 1,
+                    paddingInlineStart: "26px",
+                    paddingInlineEnd: "26px",
+                  }}
                 >
                   {icon}
                   {label}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="p-6">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="rounded-2xl rounded-tr-none p-6"
+            style={{
+              background: "#FFFFFF",
+              border: "1px solid #DCE3E1",
+              boxShadow: "0 1px 2px rgba(15,42,39,0.04), 0 12px 32px -16px rgba(15,42,39,0.18)",
+              position: "relative",
+              zIndex: 5,
+              marginTop: "-1px",
+            }}
+          >
             {/* Personal Tab */}
             {activeTab === "personal" && (
               <div className="space-y-8">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-700 mb-4">مشخصات هویتی</h3>
+                  <SectionLabel>مشخصات هویتی</SectionLabel>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <FormField
                       label="نام"
@@ -363,28 +509,29 @@ export default function PatientProfile() {
                       placeholder="مثال: رضایی"
                     />
                     <FormField
-                      label="نام کامل"
-                      register={register("fullName")}
-                      error={errors.fullName}
-                      placeholder="نام و نام خانوادگی"
-                    />
-                    <FormField
                       label="کد ملی"
                       register={register("nationalCode")}
                       error={errors.nationalCode}
                       placeholder="۱۰ رقم"
                       dir="ltr"
+                      mono
                     />
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-6">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-4">درباره بیمار</h3>
+                <div className="pt-6" style={{ borderTop: "1px solid #EEF2F1" }}>
+                  <SectionLabel>درباره بیمار</SectionLabel>
                   <textarea
                     {...register("bio")}
                     rows={4}
                     placeholder="یادداشت یا توضیحات مختصر..."
-                    className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition resize-none"
+                    className="w-full px-4 py-3 text-sm rounded-xl transition resize-none focus:outline-none"
+                    style={{
+                      background: "#EEF2F1",
+                      border: "1px solid #DCE3E1",
+                    }}
+                    onFocus={(e) => (e.target.style.boxShadow = "0 0 0 3px #DCEEEC")}
+                    onBlur={(e) => (e.target.style.boxShadow = "none")}
                   />
                   {errors.bio && <FormError message={errors.bio.message} />}
                 </div>
@@ -394,6 +541,7 @@ export default function PatientProfile() {
             {/* Contact Tab */}
             {activeTab === "contact" && (
               <div className="space-y-8">
+                <SectionLabel>راه‌های ارتباطی</SectionLabel>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <FormField
                     label="شماره موبایل"
@@ -401,6 +549,7 @@ export default function PatientProfile() {
                     error={errors.phoneNumber}
                     placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                     dir="ltr"
+                    mono
                     required
                   />
                   <FormField
@@ -410,6 +559,7 @@ export default function PatientProfile() {
                     error={errors.email}
                     placeholder="example@email.com"
                     dir="ltr"
+                    mono
                   />
                 </div>
               </div>
@@ -419,65 +569,79 @@ export default function PatientProfile() {
             {activeTab === "system" && (
               <div className="space-y-8">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-700 mb-4">وضعیت حساب</h3>
-                  <div className="flex flex-wrap gap-3">
-                    {Object.entries(STATUS_CONFIG).map(([value, config]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => handleStatusChange(value)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                          watch("status") === value
-                            ? `bg-${config.color}-50 text-${config.color}-700 ring-2 ring-${config.color}-400`
-                            : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-                        }`}
-                      >
-                        <span>{config.icon}</span>
-                        <span>{config.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100 pt-6">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-4">نقش کاربر</h3>
-                  <div className="bg-slate-50 px-4 py-3 rounded-xl text-sm text-slate-600">
-                    {patientData.role === "patient" ? "بیمار" : patientData.role}
+                  <SectionLabel>وضعیت پرونده</SectionLabel>
+                  <div className="flex flex-wrap gap-4">
+                    {Object.entries(STATUS_CONFIG).map(([value, config]) => {
+                      const selected = currentStatus === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => handleStatusChange(value)}
+                          className="flex flex-col items-center gap-2 group"
+                        >
+                          <span
+                            className={`w-11 h-11 rounded-full flex items-center justify-center text-white text-lg transition-all ${config.dot}`}
+                            style={{
+                              boxShadow: selected
+                                ? `0 0 0 3px #FFFFFF, 0 0 0 5px currentColor`
+                                : "none",
+                              color: selected ? undefined : "transparent",
+                              opacity: selected ? 1 : 0.55,
+                              transform: selected ? "scale(1.05)" : "scale(1)",
+                            }}
+                          >
+                            {config.icon}
+                          </span>
+                          <span
+                            className="text-xs font-medium"
+                            style={{ color: selected ? "#16302E" : "#5B7371" }}
+                          >
+                            {config.label}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             )}
 
             {/* Form Actions */}
-            <div className="mt-8 pt-6 border-t border-slate-200">
+            <div className="mt-8 pt-6" style={{ borderTop: "1px solid #DCE3E1" }}>
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                {isDirty && (
-                  <p className="text-xs text-amber-600 flex items-center gap-1">
-                    <span>●</span> تغییرات ذخیره نشده
+                {isDirty ? (
+                  <p className="text-xs flex items-center gap-1.5" style={{ color: "#B9821A" }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#B9821A" }} />
+                    تغییرات ذخیره نشده
                   </p>
+                ) : (
+                  <span />
                 )}
                 <div className="flex gap-3 mr-auto sm:mr-0">
                   <button
                     type="button"
                     onClick={() => reset()}
                     disabled={!isDirty || updateMutation.isPending}
-                    className="px-5 py-2 text-sm text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition disabled:opacity-40"
+                    className="px-5 py-2 text-sm rounded-xl transition disabled:opacity-40"
+                    style={{ color: "#16302E", border: "1px solid #DCE3E1" }}
                   >
                     انصراف
                   </button>
                   <button
                     type="submit"
                     disabled={!isDirty || !isValid || updateMutation.isPending || isSubmitting}
-                    className="px-6 py-2 text-sm font-medium bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-200"
+                    className="px-6 py-2 text-sm font-medium text-white rounded-xl active:scale-95 transition disabled:opacity-50 flex items-center gap-2"
+                    style={{ background: "#0F6B63", boxShadow: "0 8px 20px -8px rgba(15,107,99,0.6)" }}
                   >
-                    {(updateMutation.isPending || isSubmitting) ? (
+                    {updateMutation.isPending || isSubmitting ? (
                       <>
-                        <SpinIcon size={16} />
+                        <FiLoader className="animate-spin" style={{ width: 16, height: 16 }} />
                         <span>در حال ذخیره...</span>
                       </>
                     ) : (
                       <>
-                        <SaveIcon />
+                        <FiSave className="w-4 h-4" />
                         <span>ذخیره تغییرات</span>
                       </>
                     )}
@@ -494,158 +658,172 @@ export default function PatientProfile() {
 
 // ========== Sub-components ==========
 
-const FormField = ({ label, register, error, type = "text", placeholder, dir, required }) => (
+const SectionLabel = ({ children }) => (
+  <h3
+    className="text-xs font-semibold mb-4 tracking-wide"
+    style={{ color: "#5B7371" }}
+  >
+    {children}
+  </h3>
+);
+
+const FormField = ({ label, register, error, type = "text", placeholder, dir, required, mono }) => (
   <div>
-    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+    <label className="block text-sm font-medium mb-1.5" style={{ color: "#16302E" }}>
       {label}
-      {required && <span className="text-rose-500 mr-1">*</span>}
+      {required && <span style={{ color: "#B14A3E" }} className="mr-1">*</span>}
     </label>
     <input
       type={type}
       {...register}
       dir={dir}
       placeholder={placeholder}
-      className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 transition ${
-        error
-          ? "border-rose-300 focus:ring-rose-200 bg-rose-50"
-          : "border-slate-200 focus:ring-indigo-200 focus:border-indigo-400 bg-slate-50 focus:bg-white"
-      }`}
+      className="w-full px-4 py-2.5 text-sm rounded-xl focus:outline-none transition"
+      style={{
+        fontFamily: mono ? "'JetBrains Mono', monospace" : undefined,
+        background: error ? "#F8E9E7" : "#EEF2F1",
+        border: error ? "1px solid #E3B3AC" : "1px solid #DCE3E1",
+        boxShadow: "none",
+      }}
+      onFocus={(e) => {
+        e.target.style.boxShadow = error ? "0 0 0 3px #F3D3CE" : "0 0 0 3px #DCEEEC";
+        e.target.style.background = "#FFFFFF";
+      }}
+      onBlur={(e) => {
+        e.target.style.boxShadow = "none";
+        e.target.style.background = error ? "#F8E9E7" : "#EEF2F1";
+      }}
     />
     {error && <FormError message={error.message} />}
   </div>
 );
 
 const FormError = ({ message }) => (
-  <p className="mt-1.5 text-xs text-rose-500 flex items-center gap-1">
+  <p className="mt-1.5 text-xs flex items-center gap-1" style={{ color: "#B14A3E" }}>
     <span>⚠</span> {message}
   </p>
 );
 
-const Badge = ({ icon, text }) => (
-  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 text-xs text-slate-500">
-    {icon}
-    {text}
+const MetaBadge = ({ icon, label, value }) => (
+  <span
+    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs"
+    style={{ background: "#EEF2F1", color: "#5B7371" }}
+  >
+    <span style={{ color: "#0F6B63" }}>{icon}</span>
+    <span>{label}:</span>
+    <span
+      style={{ fontFamily: "'JetBrains Mono', monospace", color: "#16302E", direction: "ltr" }}
+    >
+      {value}
+    </span>
   </span>
 );
 
 // Loading, Error, Not Found Components
 const LoadingScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
+  <div
+    className="min-h-screen flex items-center justify-center"
+    style={{ background: "#EEF2F1", fontFamily: "'Vazirmatn', sans-serif" }}
+  >
     <div className="text-center">
-      <SpinIcon size={48} />
-      <p className="mt-4 text-slate-500">در حال بارگذاری...</p>
+      <FiLoader className="animate-spin mx-auto" style={{ width: 28, height: 28, color: "#0F6B63" }} />
+      <p className="mt-4 text-sm" style={{ color: "#5B7371" }}>
+        در حال بارگذاری پرونده...
+      </p>
     </div>
   </div>
 );
 
 const ErrorScreen = ({ message, onRetry, onBack }) => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-      <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
-        <span className="text-3xl text-rose-500">!</span>
-      </div>
-      <h3 className="text-lg font-semibold text-slate-800 mb-2">خطا در بارگذاری</h3>
-      <p className="text-sm text-slate-500 mb-6">{message}</p>
-      <div className="flex gap-3 justify-center">
-        <button onClick={onBack} className="px-4 py-2 text-sm border border-slate-200 rounded-xl hover:bg-slate-50 transition">
-          بازگشت
-        </button>
-        <button onClick={onRetry} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition">
-          تلاش مجدد
-        </button>
+  <div
+    dir="rtl"
+    className="min-h-screen flex items-center justify-center p-4"
+    style={{ background: "#EEF2F1", fontFamily: "'Vazirmatn', sans-serif" }}
+  >
+    <div
+      className="rounded-2xl overflow-hidden max-w-sm w-full"
+      style={{
+        background: "#FFFFFF",
+        border: "1px solid #DCE3E1",
+        boxShadow: "0 1px 2px rgba(15,42,39,0.04), 0 12px 32px -16px rgba(15,42,39,0.18)",
+      }}
+    >
+      <div className="flex items-stretch">
+        <div className="w-1.5 shrink-0" style={{ background: "#B14A3E" }} aria-hidden="true" />
+        <div className="p-6 flex-1 min-w-0">
+          <div className="flex items-center gap-2.5 mb-3">
+            <span
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: "#F8E9E7" }}
+            >
+              <FiAlertTriangle style={{ width: 16, height: 16, color: "#B14A3E" }} />
+            </span>
+            <h3 className="text-base font-semibold" style={{ color: "#16302E" }}>
+              خطا در بارگذاری پرونده
+            </h3>
+          </div>
+          <p
+            className="text-xs mb-5 px-3 py-2 rounded-lg inline-block"
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              background: "#EEF2F1",
+              color: "#5B7371",
+              direction: "ltr",
+              unicodeBidi: "isolate",
+            }}
+          >
+            {message}
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={onRetry}
+              className="px-4 py-2 text-sm font-medium text-white rounded-xl transition"
+              style={{ background: "#0F6B63" }}
+            >
+              تلاش مجدد
+            </button>
+            <button
+              onClick={onBack}
+              className="px-4 py-2 text-sm rounded-xl transition"
+              style={{ border: "1px solid #DCE3E1", color: "#16302E" }}
+            >
+              بازگشت
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 );
 
 const NotFoundScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50">
-    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-8 text-amber-700">
-      ⚠ بیمار با این شناسه یافت نشد
+  <div
+    dir="rtl"
+    className="min-h-screen flex items-center justify-center p-4"
+    style={{ background: "#EEF2F1", fontFamily: "'Vazirmatn', sans-serif" }}
+  >
+    <div
+      className="rounded-2xl overflow-hidden max-w-sm w-full"
+      style={{
+        background: "#FFFFFF",
+        border: "1px solid #DCE3E1",
+        boxShadow: "0 1px 2px rgba(15,42,39,0.04), 0 12px 32px -16px rgba(15,42,39,0.18)",
+      }}
+    >
+      <div className="flex items-stretch">
+        <div className="w-1.5 shrink-0" style={{ background: "#B9821A" }} aria-hidden="true" />
+        <div className="p-6 flex-1 min-w-0 flex items-center gap-2.5">
+          <span
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: "#FBF1DF" }}
+          >
+            <FiFileMinus style={{ width: 16, height: 16, color: "#B9821A" }} />
+          </span>
+          <p className="text-sm font-medium" style={{ color: "#16302E" }}>
+            بیمار با این شناسه یافت نشد
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 );
-
-// ========== Icons ==========
-const SpinIcon = ({ size = 20 }) => (
-  <svg className="animate-spin" style={{ width: size, height: size }} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round"/>
-  </svg>
-);
-
-const ChevronIcon = () => (
-  <svg className="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M9 18l6-6-6-6"/>
-  </svg>
-);
-
-const CameraIcon = () => (
-  <svg className="w-4 h-4 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-    <circle cx="12" cy="13" r="4"/>
-  </svg>
-);
-
-const ArrowRightIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M5 12h14M12 5l7 7-7 7"/>
-  </svg>
-);
-
-const SaveIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-    <polyline points="17,21 17,13 7,13 7,21"/>
-    <polyline points="7,3 7,8 15,8"/>
-  </svg>
-);
-
-const UserIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-    <circle cx="12" cy="7" r="4"/>
-  </svg>
-);
-
-const PhoneIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.01 1.19 2 2 0 012 .01h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
-  </svg>
-);
-
-const SettingsIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H5.78a1.65 1.65 0 0 0-1.51 1 1.65 1.65 0 0 0 .33 1.82l.07.08A10 10 0 0 0 12 17.66a10 10 0 0 0 6.18-2.33l.07-.08z"/>
-    <path d="M4.6 9a1.65 1.65 0 0 0-.33 1.82c.26.6.87 1 1.51 1h12.44c.64 0 1.25-.4 1.51-1a1.65 1.65 0 0 0-.33-1.82l-.07-.08A10 10 0 0 0 12 6.34a10 10 0 0 0-6.18 2.33l-.07.08z"/>
-  </svg>
-);
-
-const IdIcon = () => (
-  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="7" width="18" height="14" rx="2"/>
-    <path d="M7 3v4M17 3v4M11 12h6M11 16h4M7 12h.01"/>
-  </svg>
-);
-
-const CalendarIcon = () => (
-  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="4" width="18" height="18" rx="2"/>
-    <path d="M16 2v4M8 2v4M3 10h18"/>
-  </svg>
-);
-
-const EditIcon = () => (
-  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-  </svg>
-);
-
-
-
-
-
-
-
-
