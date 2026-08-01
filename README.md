@@ -153,9 +153,6 @@ http://localhost:5173
   <img src="./screenshots/home.png" alt="Home Page" width="900"/>
 </p>
 
-## Admin Dashboard
-
-
 
 ---
 
