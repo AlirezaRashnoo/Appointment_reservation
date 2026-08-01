@@ -1,229 +1,206 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  FaCheck, 
-  FaTimes, 
-  FaReply, 
-  FaEye, 
+import React, { useState } from 'react';
+import {
+  FaCheck,
+  FaTimes,
+  FaReply,
   FaTrash,
   FaComment,
-  FaClock
+  FaClock,
+  FaStar,
+  FaRegStar,
+  FaExclamationTriangle,
+  FaRedo,
 } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getPendingReviews, acceptReview, rejectReview, deleteReview, replyToReview } from '@/features/reviewsapi';
+
+// کمک‌تابع برای نمایش نام کاربر از ساختار داده‌ی بک‌اند واقعی
+function getUserName(user) {
+  const first = user?.profile?.firstName;
+  const last = user?.profile?.lastName;
+  if (first || last) return `${first ?? ''} ${last ?? ''}`.trim();
+  return user?.phoneNumber || 'کاربر';
+}
+
+// حروف اول نام برای آواتار (جایگزین ایموجی ثابت)
+function getInitials(name) {
+  const parts = (name || '').trim().split(' ').filter(Boolean);
+  if (parts.length === 0) return '؟';
+  if (parts.length === 1) return parts[0].slice(0, 1);
+  return parts[0].slice(0, 1) + parts[1].slice(0, 1);
+}
+
+// رنگ آواتار بر اساس نام، هماهنگ با تم داسی‌یوآی پروژه
+const AVATAR_PALETTES = [
+  'bg-primary/15 text-primary',
+  'bg-secondary/15 text-secondary',
+  'bg-accent/15 text-accent',
+  'bg-info/15 text-info',
+  'bg-success/15 text-success',
+  'bg-warning/15 text-warning',
+];
+function getAvatarPalette(name) {
+  let hash = 0;
+  for (let i = 0; i < (name || '').length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
+}
+
+function StarRating({ rating }) {
+  if (typeof rating !== 'number') return null;
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) =>
+        s <= Math.round(rating) ? (
+          <FaStar key={s} className="text-warning text-xs" />
+        ) : (
+          <FaRegStar key={s} className="text-base-content/20 text-xs" />
+        )
+      )}
+      <span className="text-xs text-base-content/50 mr-1">{rating.toFixed ? rating.toFixed(1) : rating}</span>
+    </div>
+  );
+}
+
+const STATUS_CONFIG = {
+  pending: { text: 'در انتظار', class: 'badge-warning', Icon: FaClock },
+  accepted: { text: 'تایید شده', class: 'badge-success', Icon: FaCheck },
+  rejected: { text: 'رد شده', class: 'badge-error', Icon: FaTimes },
+};
+
+function StatusBadge({ status }) {
+  const c = STATUS_CONFIG[status] || { text: status, class: 'badge-neutral', Icon: FaComment };
+  const Icon = c.Icon;
+  return (
+    <span className={`badge ${c.class} gap-1 font-normal whitespace-nowrap`}>
+      <Icon className="text-[10px]" />
+      {c.text}
+    </span>
+  );
+}
 
 export default function CommentsList() {
-  const [selectedStatus, setSelectedStatus] = useState('all');
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyContent, setReplyContent] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: comments = [], isLoading, error } = useQuery({
-    queryKey: ['admin-comments'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comments')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // تبدیل داده‌ها به فرمت مناسب
-      return data.map(comment => ({
-        id: comment.id,
-        user: {
-          name: comment.user_name || 'کاربر',
-          avatar: comment.user_avatar || '👤',
-          role: comment.dentist_id ? 'dentist' : 'patient'
-        },
-        content: comment.content,
-        post: comment.source === 'blog' ? 'مقاله وبلاگ' : 'پروفایل دندانپزشک',
-        date: new Date(comment.created_at).toLocaleDateString('fa-IR'),
-        time: new Date(comment.created_at).toLocaleTimeString('fa-IR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        }),
-        status: comment.status || 'pending',
-        source: comment.source || 'blog',
-        reply: comment.reply,
-        replied_at: comment.replied_at,
-        dentist_id: comment.dentist_id,
-        patient_id: comment.patient_id
-      }));
-    }
+  // نکته: بک‌اند فعلاً فقط لیست ریویوهای «در انتظار تایید» را به‌صورت سراسری
+  // برمی‌گرداند (GET /dentists/reviews/pending)، بنابراین فیلتر تب «تایید شده»
+  // فعلاً معنا ندارد مگر با انتخاب یک دندانپزشک خاص و getReviewsForDentist.
+  const {
+    data: rawReviews = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin-pending-reviews'],
+    queryFn: () => getPendingReviews(),
   });
 
-  // Mutation برای آپدیت وضعیت کامنت
-  const updateCommentStatus = useMutation({
-    mutationFn: async ({ commentId, status }) => {
-      const updateData = { 
-        status: status
-      };
-
-      const { error } = await supabase
-        .from('comments')
-        .update(updateData)
-        .eq('id', commentId);
-
-      if (error) throw new Error(`خطا در آپدیت وضعیت: ${error.message}`);
+  const comments = rawReviews.map((review) => ({
+    id: review.id,
+    user: {
+      name: getUserName(review.user),
     },
+    content: review.comment,
+    rating: review.rating,
+    date: review.createdAt ? new Date(review.createdAt).toLocaleDateString('fa-IR') : '',
+    time: review.createdAt
+      ? new Date(review.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
+      : '',
+    status: review.status ? review.status.toLowerCase() : 'pending',
+    reply: review.reply?.comment,
+    replied_at: review.reply?.createdAt,
+    dentistId: review.dentist?.userId,
+  }));
+
+  const acceptMutation = useMutation({
+    mutationFn: (reviewId) => acceptReview(reviewId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] }),
+    onError: (err) => {
+      console.error('خطا در تایید ریویو:', err);
+      alert(err?.response?.data?.message || 'خطا در تایید کامنت');
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (reviewId) => rejectReview(reviewId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] }),
+    onError: (err) => {
+      console.error('خطا در رد ریویو:', err);
+      alert(err?.response?.data?.message || 'خطا در رد کامنت');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (reviewId) => deleteReview(reviewId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] });
     },
-    onError: (error) => {
-      console.error('خطا در آپدیت وضعیت:', error);
-      alert(error.message);
-    }
+    onError: (err) => {
+      console.error('خطا در حذف ریویو:', err);
+      alert(err?.response?.data?.message || 'خطا در حذف کامنت');
+    },
   });
 
-  // Mutation برای پاسخ به کامنت
-  const replyToComment = useMutation({
-    mutationFn: async ({ commentId, replyContent }) => {
-      const updateData = { 
-        reply: replyContent,
-        replied_at: new Date().toISOString(),
-        // status: 'replied'
-      };
-
-      console.log('در حال ارسال داده‌ها:', { commentId, updateData });
-
-      const { data, error } = await supabase
-        .from('comments')
-        .update(updateData)
-        .eq('id', commentId)
-        .select(); // اضافه کردن select برای دیباگ
-
-      if (error) {
-        console.error('خطای سوپابیس:', error);
-        throw new Error(`خطا در ارسال پاسخ: ${error.message}`);
-      }
-
-      console.log('پاسخ با موفقیت ارسال شد:', data);
-      return data;
-    },
-    onSuccess: (data) => {
-      // console.log('پاسخ با موفقیت ذخیره شد:', data);
-      queryClient.invalidateQueries({ queryKey: ['admin-comments'] });
+  const replyMutation = useMutation({
+    mutationFn: ({ dentistId, originalReviewId, replyText, rating }) =>
+      replyToReview({ dentistId, originalReviewId, replyText, rating }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] });
       setReplyingTo(null);
       setReplyContent('');
-      alert('پاسخ با موفقیت ارسال شد');
     },
-    onError: (error) => {
-      console.error('خطا در ارسال پاسخ:', error);
-      alert(error.message);
-    }
+    onError: (err) => {
+      console.error('خطا در ارسال پاسخ:', err);
+      alert(err?.response?.data?.message || 'خطا در ارسال پاسخ');
+    },
   });
 
-  // Mutation برای حذف کامنت
-  const deleteComment = useMutation({
-    mutationFn: async (commentId) => {
-      const { error } = await supabase
-        .from('comments')
-        .delete()
-        .eq('id', commentId);
-
-      if (error) throw new Error(`خطا در حذف کامنت: ${error.message}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-comments'] });
-      alert('کامنت با موفقیت حذف شد');
-    },
-    onError: (error) => {
-      alert(error.message);
-    }
-  });
-
-  const statusFilters = [
-    { 
-      id: 'all', 
-      label: 'همه کامنت‌ها', 
-      count: comments.length, 
-      icon: FaComment 
-    },
-    { 
-      id: 'pending', 
-      label: 'در انتظار تایید', 
-      count: comments.filter(c => c.status === 'pending').length, 
-      icon: FaClock 
-    },
-    { 
-      id: 'approved', 
-      label: 'تایید شده', 
-      count: comments.filter(c => c.status === 'approved').length, 
-      icon: FaCheck 
-    },
-
-  ];
-
-  const getStatusBadge = (status) => {
-    const config = {
-      pending: { text: 'در انتظار', class: 'badge-warning' },
-      approved: { text: 'تایید شده', class: 'badge-success' },
-      // replied: { text: 'پاسخ داده شده', class: 'badge-info' },
-      rejected: { text: 'رد شده', class: 'badge-error' }
-    };
-    
-    return (
-      <span className={`badge ${config[status]?.class || 'badge-neutral'}`}>
-        {config[status]?.text || status}
-      </span>
-    );
-  };
-
-  const getUserRoleBadge = (role) => {
-    return (
-      <span className={`badge badge-outline ${role === 'dentist' ? 'badge-info' : 'badge-primary'}`}>
-        {role === 'dentist' ? 'دندانپزشک' : 'بیمار'}
-      </span>
-    );
-  };
-
-  const getSourceBadge = (source) => {
-    const config = {
-      blog: { text: 'مقاله وبلاگ', class: 'badge-ghost', icon: '📝' },
-      profile: { text: 'پروفایل دکتر', class: 'badge-accent', icon: '👨‍⚕️' },
-      DentistProfile: { text: 'پروفایل دندانپزشک', class: 'badge-accent', icon: '👨‍⚕️' }
-    };
-    
-    const sourceConfig = config[source] || config.blog;
-    
-    return (
-      <span className={`badge ${sourceConfig.class}`}>
-        {sourceConfig.icon} {sourceConfig.text}
-      </span>
-    );
-  };
-
-  const filteredComments = comments.filter(comment => 
-    selectedStatus === 'all' || comment.status === selectedStatus
-  );
-
-  const handleAction = (commentId, action) => {
+  const handleAction = (comment, action) => {
     switch (action) {
       case 'approve':
-        updateCommentStatus.mutate({ commentId, status: 'approved' });
+        acceptMutation.mutate(comment.id);
         break;
       case 'reject':
-        updateCommentStatus.mutate({ commentId, status: 'rejected' });
+        rejectMutation.mutate(comment.id);
         break;
       case 'delete':
-        if (window.confirm('آیا از حذف این کامنت مطمئن هستید؟')) {
-          deleteComment.mutate(commentId);
-        }
+        setDeleteTarget(comment);
         break;
       case 'reply':
-        setReplyingTo(commentId);
+        setReplyingTo(comment.id);
+        setReplyContent('');
         break;
       default:
-        // console.log(`Action: ${action} on comment ${commentId}`);
+        break;
     }
   };
 
-  const handleSubmitReply = (commentId) => {
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => setDeleteTarget(null),
+    });
+  };
+
+  const handleSubmitReply = (comment) => {
     if (!replyContent.trim()) {
       alert('لطفا متن پاسخ را وارد کنید');
       return;
     }
-    
-    replyToComment.mutate({ commentId, replyContent });
+    if (!comment.dentistId) {
+      alert('شناسه دندانپزشک این کامنت مشخص نیست، امکان پاسخ وجود ندارد');
+      return;
+    }
+    replyMutation.mutate({
+      dentistId: comment.dentistId,
+      originalReviewId: comment.id,
+      replyText: replyContent,
+      rating: comment.rating,
+    });
   };
 
   const handleCancelReply = () => {
@@ -231,25 +208,53 @@ export default function CommentsList() {
     setReplyContent('');
   };
 
+  // --- حالت بارگذاری: اسکلتون به‌جای اسپینر تنها ---
   if (isLoading) {
     return (
       <div className="p-6 bg-base-100 min-h-screen">
         <div className="max-w-4xl mx-auto">
-          <div className="flex justify-center items-center h-64">
-            <span className="loading loading-spinner loading-lg"></span>
+          <div className="mb-8 flex items-center gap-4">
+            <div className="skeleton w-14 h-14 rounded-2xl shrink-0"></div>
+            <div className="space-y-2">
+              <div className="skeleton h-6 w-48"></div>
+              <div className="skeleton h-4 w-64"></div>
+            </div>
+          </div>
+          <div className="space-y-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="card bg-base-100 border border-base-300/70 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="skeleton w-12 h-12 rounded-full shrink-0"></div>
+                  <div className="space-y-2 flex-1">
+                    <div className="skeleton h-4 w-32"></div>
+                    <div className="skeleton h-3 w-24"></div>
+                  </div>
+                </div>
+                <div className="skeleton h-16 w-full rounded-xl"></div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
     );
   }
 
+  // --- حالت خطا ---
   if (error) {
     return (
-      <div className="p-6 bg-base-100 min-h-screen">
-        <div className="max-w-4xl mx-auto">
-          <div className="alert alert-error">
-            <span>خطا در بارگذاری کامنت‌ها: {error.message}</span>
+      <div className="p-6 bg-base-100 min-h-screen flex items-center justify-center">
+        <div className="max-w-md w-full text-center">
+          <div className="w-16 h-16 rounded-2xl bg-error/10 text-error flex items-center justify-center mx-auto mb-4">
+            <FaExclamationTriangle className="text-2xl" />
           </div>
+          <h3 className="font-bold text-lg text-base-content mb-2">خطا در بارگذاری کامنت‌ها</h3>
+          <p className="text-base-content/60 text-sm mb-5">
+            {error?.response?.data?.message || error.message}
+          </p>
+          <button className="btn btn-primary btn-sm gap-2" onClick={() => refetch()}>
+            <FaRedo className="text-xs" />
+            تلاش مجدد
+          </button>
         </div>
       </div>
     );
@@ -258,188 +263,232 @@ export default function CommentsList() {
   return (
     <div className="p-6 bg-base-100 min-h-screen">
       <div className="max-w-4xl mx-auto">
-        
         {/* هدر */}
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 rounded-2xl bg-primary/20 text-primary">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-content shadow-lg shadow-primary/20">
               <FaComment className="text-2xl" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-base-content">مدیریت کامنت‌ها</h1>
-              <p className="text-base-content/60 mt-1">نظرات کاربران را مدیریت و بررسی کنید</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-base-content">مدیریت کامنت‌ها</h1>
+              <p className="text-base-content/60 mt-1 text-sm">
+                بررسی و تایید نظرات بیماران روی پروفایل دندانپزشکان
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 bg-base-200 rounded-2xl px-5 py-3 self-start sm:self-auto">
+            <div className="w-9 h-9 rounded-xl bg-warning/15 text-warning flex items-center justify-center shrink-0">
+              <FaClock />
+            </div>
+            <div>
+              <div className="text-xs text-base-content/50">در انتظار بررسی</div>
+              <div className="text-xl font-bold text-base-content leading-tight">{comments.length}</div>
             </div>
           </div>
         </div>
 
-        {/* فیلترهای وضعیت */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {statusFilters.map(filter => (
-            <button
-              key={filter.id}
-              onClick={() => setSelectedStatus(filter.id)}
-              className={`card compact transition-all duration-200 ${
-                selectedStatus === filter.id 
-                  ? 'bg-primary text-primary-content shadow-lg transform -translate-y-1' 
-                  : 'bg-base-200 hover:bg-base-300'
-              }`}
-            >
-              <div className="card-body items-center text-center p-4">
-                <filter.icon className={`text-2xl mb-2 ${selectedStatus === filter.id ? 'text-primary-content' : 'text-primary'}`} />
-                <h3 className="font-semibold text-sm">{filter.label}</h3>
-                <div className={`text-lg font-bold ${selectedStatus === filter.id ? 'text-primary-content' : 'text-base-content'}`}>
-                  {filter.count}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-
         {/* لیست کامنت‌ها */}
-        <div className="space-y-6">
-          {filteredComments.map(comment => (
-            <div key={comment.id} className="card bg-base-100 shadow-lg border border-base-300 transition-all hover:shadow-xl">
-              <div className="card-body p-6">
-                
-                {/* هدر کامنت */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="avatar placeholder">
-                      <div className="bg-gradient-to-br from-primary to-secondary text-primary-content rounded-full w-14 h-14 shadow">
-                        <span className="text-xl">{comment.user.avatar}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-bold text-base-content">{comment.user.name}</h3>
-                        {getUserRoleBadge(comment.user.role)}
-                        {getStatusBadge(comment.status)}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-base-content/60">
-                        <span>{comment.date}</span>
-                        <span className="text-base-content/40">•</span>
-                        <span>{comment.time}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <div className="space-y-5">
+          {comments.map((comment) => {
+            const isAcceptingThis = acceptMutation.isPending && acceptMutation.variables === comment.id;
+            const isRejectingThis = rejectMutation.isPending && rejectMutation.variables === comment.id;
+            const isReplyingThis =
+              replyMutation.isPending && replyMutation.variables?.originalReviewId === comment.id;
 
-                {/* متن کامنت */}
-                <div className="mb-4">
-                  <p className="text-base-content leading-7 text-justify bg-base-200 rounded-lg p-4 border-r-4 border-primary">
+            return (
+              <div
+                key={comment.id}
+                className="card bg-base-100 border border-base-300/70 shadow-sm hover:shadow-md hover:border-base-300 transition-all duration-200 rounded-2xl"
+              >
+                <div className="card-body p-5 md:p-6">
+                  {/* هدر کارت: کاربر + وضعیت */}
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 ${getAvatarPalette(
+                          comment.user.name
+                        )}`}
+                      >
+                        {getInitials(comment.user.name)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-bold text-base-content">{comment.user.name}</h3>
+                          <span className="badge badge-sm badge-outline font-normal">بیمار</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 text-xs text-base-content/50">
+                          <FaClock className="text-[10px]" />
+                          <span>
+                            {comment.date} · {comment.time}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <StatusBadge status={comment.status} />
+                  </div>
+
+                  {typeof comment.rating === 'number' && (
+                    <div className="mt-3">
+                      <StarRating rating={comment.rating} />
+                    </div>
+                  )}
+
+                  {/* متن کامنت */}
+                  <p className="mt-4 text-base-content/90 leading-8 text-[15px] bg-base-200/60 rounded-xl p-4 border-r-4 border-primary">
                     {comment.content}
                   </p>
-                </div>
 
-                {/* پاسخ ادمین (اگر وجود دارد) */}
-                {comment.reply && (
-                  <div className="mb-4 bg-info/20 rounded-lg p-4 border-r-4 border-info">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-semibold text-info">پاسخ ادمین:</span>
-                      {comment.replied_at && (
-                        <span className="text-sm text-info/70">
-                          {new Date(comment.replied_at).toLocaleDateString('fa-IR')}
-                        </span>
-                      )}
+                  {/* پاسخ ثبت‌شده‌ی ادمین */}
+                  {comment.reply && (
+                    <div className="mt-4 bg-info/10 rounded-xl p-4 border-r-4 border-info">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <FaReply className="text-info text-xs" />
+                        <span className="font-semibold text-sm text-info">پاسخ ادمین</span>
+                        {comment.replied_at && (
+                          <span className="text-xs text-info/60 font-normal">
+                            {new Date(comment.replied_at).toLocaleDateString('fa-IR')}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-base-content/80 leading-7 text-sm">{comment.reply}</p>
                     </div>
-                    <p className="text-info-content leading-7">{comment.reply}</p>
-                  </div>
-                )}
+                  )}
 
-                {/* فرم پاسخ دادن */}
-                {replyingTo === comment.id && (
-                  <div className="mb-4 bg-warning/20 rounded-lg p-4 border-r-4 border-warning">
-                    <div className="font-semibold text-warning mb-2">پاسخ شما:</div>
-                    <textarea
-                      value={replyContent}
-                      onChange={(e) => setReplyContent(e.target.value)}
-                      className="textarea textarea-bordered w-full h-24 mb-3"
-                      placeholder="پاسخ خود را اینجا بنویسید..."
-                    />
-                    <div className="flex gap-2">
-                      <button 
-                        className="btn btn-success btn-sm"
-                        onClick={() => handleSubmitReply(comment.id)}
-                        disabled={replyToComment.isPending}
+                  {/* فرم پاسخ */}
+                  {replyingTo === comment.id && (
+                    <div className="mt-4 bg-warning/10 rounded-xl p-4 border-r-4 border-warning">
+                      <div className="font-semibold text-warning mb-2 text-sm flex items-center gap-2">
+                        <FaReply className="text-xs" />
+                        نوشتن پاسخ
+                      </div>
+                      <textarea
+                        value={replyContent}
+                        onChange={(e) => setReplyContent(e.target.value)}
+                        className="textarea textarea-bordered w-full h-24 mb-3 bg-base-100"
+                        placeholder="پاسخ خود را اینجا بنویسید..."
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          className="btn btn-warning btn-sm gap-2"
+                          onClick={() => handleSubmitReply(comment)}
+                          disabled={isReplyingThis}
+                        >
+                          {isReplyingThis ? (
+                            <span className="loading loading-spinner loading-xs" />
+                          ) : (
+                            <FaCheck className="text-xs" />
+                          )}
+                          ارسال پاسخ
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={handleCancelReply}
+                          disabled={isReplyingThis}
+                        >
+                          انصراف
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* نوار عملیات */}
+                  <div className="mt-5 pt-4 border-t border-base-300/70 flex flex-wrap items-center justify-between gap-3">
+                    <span className="badge badge-ghost gap-1.5 text-xs font-normal">
+                      👨‍⚕️ پروفایل دندانپزشک
+                    </span>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        className="btn btn-sm btn-success gap-1.5"
+                        onClick={() => handleAction(comment, 'approve')}
+                        disabled={isAcceptingThis}
                       >
-                        {replyToComment.isPending ? 'در حال ارسال...' : 'ارسال پاسخ'}
+                        {isAcceptingThis ? (
+                          <span className="loading loading-spinner loading-xs" />
+                        ) : (
+                          <FaCheck className="text-xs" />
+                        )}
+                        تایید
                       </button>
-                      <button 
-                        className="btn btn-ghost btn-sm"
-                        onClick={handleCancelReply}
-                        disabled={replyToComment.isPending}
+                      <button
+                        className="btn btn-sm btn-error gap-1.5"
+                        onClick={() => handleAction(comment, 'reject')}
+                        disabled={isRejectingThis}
                       >
-                        انصراف
+                        {isRejectingThis ? (
+                          <span className="loading loading-spinner loading-xs" />
+                        ) : (
+                          <FaTimes className="text-xs" />
+                        )}
+                        رد
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline btn-info gap-1.5"
+                        onClick={() => handleAction(comment, 'reply')}
+                        disabled={replyingTo === comment.id}
+                      >
+                        <FaReply className="text-xs" />
+                        پاسخ
+                      </button>
+                      <button
+                        className="btn btn-sm btn-ghost text-error hover:bg-error/10"
+                        onClick={() => handleAction(comment, 'delete')}
+                        title="حذف کامنت"
+                        aria-label="حذف کامنت"
+                      >
+                        <FaTrash className="text-xs" />
                       </button>
                     </div>
-                  </div>
-                )}
-
-                {/* اطلاعات پست و منبع */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 p-3 bg-base-200 rounded-lg">
-                  <div className="text-base-content/70">
-                    منبع: {getSourceBadge(comment.source)}
-                  </div>
-                </div>
-
-                {/* اقدامات */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-base-300">
-                  <div className="flex items-center gap-1 text-sm text-base-content/60">
-                    <span>عملیات سریع:</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button 
-                      className="btn btn-success btn-sm gap-2"
-                      onClick={() => handleAction(comment.id, 'approve')}
-                      disabled={updateCommentStatus.isPending}
-                    >
-                      <FaCheck />
-                      تایید
-                    </button>
-                    {/* <button 
-                      className="btn btn-error btn-sm gap-2"
-                      onClick={() => handleAction(comment.id, 'reject')}
-                      disabled={updateCommentStatus.isPending}
-                    >
-                      <FaTimes />
-                      رد
-                    </button> */}
-                    <button 
-                      className="btn btn-info btn-sm gap-2"
-                      onClick={() => handleAction(comment.id, 'reply')}
-                      disabled={replyingTo === comment.id || replyToComment.isPending}
-                    >
-                      <FaReply />
-                      پاسخ
-                    </button>
-                    <button 
-                      className="btn btn-ghost btn-sm gap-2 text-error hover:bg-error/20"
-                      onClick={() => handleAction(comment.id, 'delete')}
-                      disabled={deleteComment.isPending}
-                    >
-                      <FaTrash className='size-4'/>
-                    </button>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
-          {/* پیام زمانی که کامنتی وجود ندارد */}
-          {filteredComments.length === 0 && (
+          {comments.length === 0 && (
             <div className="text-center py-16">
               <div className="p-8 bg-base-200 rounded-2xl max-w-md mx-auto">
-                <FaComment className="text-6xl text-base-content/30 mx-auto mb-4" />
+                <div className="w-16 h-16 rounded-2xl bg-success/10 text-success flex items-center justify-center mx-auto mb-4">
+                  <FaCheck className="text-2xl" />
+                </div>
                 <h3 className="text-xl font-semibold text-base-content mb-2">کامنتی یافت نشد</h3>
-                <p className="text-base-content/60">
-                  هیچ کامنتی با فیلتر انتخاب شده مطابقت ندارد
-                </p>
+                <p className="text-base-content/60">در حال حاضر کامنت در انتظار تاییدی وجود ندارد</p>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* مودال تایید حذف، به‌جای window.confirm */}
+      {deleteTarget && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg flex items-center gap-2 text-error">
+              <FaExclamationTriangle />
+              حذف کامنت
+            </h3>
+            <p className="py-4 text-base-content/70 text-sm leading-7">
+              آیا از حذف کامنت «{deleteTarget.user.name}» مطمئن هستید؟ این عملیات قابل بازگشت نیست.
+            </p>
+            <div className="modal-action">
+              <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)} disabled={deleteMutation.isPending}>
+                انصراف
+              </button>
+              <button className="btn btn-error gap-2" onClick={confirmDelete} disabled={deleteMutation.isPending}>
+                {deleteMutation.isPending ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : (
+                  <FaTrash className="text-xs" />
+                )}
+                حذف قطعی
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop" onClick={() => setDeleteTarget(null)}></div>
+        </div>
+      )}
     </div>
   );
 }

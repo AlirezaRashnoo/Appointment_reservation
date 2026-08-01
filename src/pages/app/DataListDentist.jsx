@@ -12,13 +12,14 @@ import { FaCircleUser } from "react-icons/fa6";
 import ClipLoader from "react-spinners/ClipLoader";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import Cookies from "js-cookie";
-
 import 'swiper/css'
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 import { Pagination, Navigation } from 'swiper/modules';
+import { useUserStore } from "@/stores/useUserStore";
 
 export default function DentistProfilePage() {
+  
   const { id: dentistId } = useParams();
 
   const [dentist, setDentist] = useState(null);
@@ -35,6 +36,8 @@ export default function DentistProfilePage() {
   const [replyText, setReplyText] = useState("");
 
   const portfolio = dentist?.portfolio ?? [];
+  const profilePatient = useUserStore((state) => state.user);
+  
 
 
   const getHeaders = () => {
@@ -112,9 +115,12 @@ export default function DentistProfilePage() {
         }
       );
 
+
       if (!res.ok) throw new Error("خطا در دریافت نظرات");
 
       const json = await res.json();
+      console.log(json.data);
+      
       setReviews(json.data || []);
     } catch (err) {
       console.error(err.message);
@@ -491,7 +497,7 @@ const handleReplyReview = async (reviewId) => {
 
               <div>
                 <p className="font-bold text-sm text-gray-800">
-                  {review?.user?.profile?.fullName || "کاربر"}
+                  {profilePatient?.profile?.profile?.firstName || "کاربر"}
                 </p>
                 <div className="flex items-center gap-1 text-yellow-400 text-sm">
                   {"★".repeat(review.rating)}
