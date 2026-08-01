@@ -149,30 +149,13 @@ http://localhost:5173
 
 # 📸 Screenshots
 
-Create a **screenshots** folder and add images like:
-
-```text
-screenshots/
-│
-├── home.png
-├── login.png
-├── patient-dashboard.png
-├── dentist-dashboard.png
-├── admin-dashboard.png
-└── booking.png
-```
-
-Then display them:
-
-```md
-## Home
-
-![Home](./screenshots/home.png)
+<p align="center">
+  <img src="./screenshots/home.png" alt="Home Page" width="900"/>
+</p>
 
 ## Admin Dashboard
 
-![Admin](./screenshots/admin-dashboard.png)
-```
+
 
 ---
 
